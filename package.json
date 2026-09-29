@@ -9,6 +9,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.ts",
+    "supabase": "supabase",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "test:db:local": "supabase db reset && DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres vitest run --config vitest.db.config.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -27,6 +32,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "jsdom": "^26.0.0",
     "pg": "^8.13.3",
+    "supabase": "2.118.0",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
     "vitest": "^3.0.5"
