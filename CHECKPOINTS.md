@@ -72,3 +72,35 @@ without relying on chat history.
 **Checkpoint status:** complete. The concurrency-safe booking constraint (the
 project's core differentiator) is now proven end-to-end against real Postgres,
 not just asserted in the design.
+
+
+## 2026-09-30 — Milestone 4: cancellation and rescheduling
+
+**Completed**
+
+- Added `cancelled` status to the booking state machine and updated the
+  status-shape check constraint accordingly.
+- Added `cancel_booking` and `reschedule_booking` database functions, both
+  enforcing a 1-hour-before-start-time cutoff checked against the original
+  booking time. Reschedule is atomic: old slot release and new slot booking
+  happen in a single transaction, re-using `assert_bookable_slot`'s existing
+  exclusion-by-id support so the booking doesn't conflict with its own prior
+  slot.
+- Fixed two issues found during this cycle: a case-handling gap in the
+  migration's dynamic constraint lookup (resolved with an explicit fallback
+  drop), and a test-isolation issue where shared time offsets across tests
+  could collide (resolved by giving each test a distinct, well-separated
+  offset).
+
+**TDD evidence**
+
+- Red: 7 new integration tests written against not-yet-existing functions,
+  confirmed failing for the right reason (`function does not exist`).
+- Green: `npm run test:db:local` passed: 1 test file / 12 tests, including
+  cutoff enforcement (both directions), wrong-token rejection, double-cancel
+  rejection, and reschedule atomicity (a rejected reschedule leaves the
+  original booking untouched).
+
+**Checkpoint status:** complete. Cancellation and rescheduling are proven
+end-to-end against real Postgres, with the same TDD rigor as the core
+booking flow.
