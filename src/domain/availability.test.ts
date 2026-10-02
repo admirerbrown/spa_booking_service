@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getAvailableSlots } from './availability';
+import { getAvailableSlots, combineTherapistSlots } from "./availability";
+
 
 describe('getAvailableSlots', () => {
   const day = '2026-10-01';
@@ -31,5 +32,45 @@ describe('getAvailableSlots', () => {
       ],
       now: new Date('2026-10-01T08:00:00.000Z'),
     })).toEqual(['10:00', '11:00']);
+  });
+});
+
+
+describe("combineTherapistSlots", () => {
+  it("shows each start time once and selects a therapist deterministically", () => {
+    const slots = [
+      {
+        therapistId: "therapist-b",
+        startTime: "2026-10-02T09:00:00.000Z",
+        endTime: "2026-10-02T10:00:00.000Z",
+      },
+      {
+        therapistId: "therapist-a",
+        startTime: "2026-10-02T09:00:00.000Z",
+        endTime: "2026-10-02T10:00:00.000Z",
+      },
+      {
+        therapistId: "therapist-c",
+        startTime: "2026-10-02T10:00:00.000Z",
+        endTime: "2026-10-02T11:00:00.000Z",
+      },
+    ];
+
+    expect(combineTherapistSlots(slots)).toEqual([
+      {
+        therapistId: "therapist-a",
+        startTime: "2026-10-02T09:00:00.000Z",
+        endTime: "2026-10-02T10:00:00.000Z",
+      },
+      {
+        therapistId: "therapist-c",
+        startTime: "2026-10-02T10:00:00.000Z",
+        endTime: "2026-10-02T11:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("returns an empty array when no therapists have available slots", () => {
+    expect(combineTherapistSlots([])).toEqual([]);
   });
 });
