@@ -26,6 +26,7 @@ export default function App() {
     null,
   );
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -99,7 +100,12 @@ export default function App() {
 
           <div>
             {availableSlots.map((slot) => (
-              <button key={slot.startTime} type="button">
+              <button
+                key={slot.startTime}
+                type="button"
+                aria-pressed={selectedSlot === slot.startTime}
+                onClick={() => setSelectedSlot(slot.startTime)}
+              >
                 {slot.startTime}
               </button>
             ))}

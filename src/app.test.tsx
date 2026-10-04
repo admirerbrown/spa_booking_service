@@ -79,4 +79,21 @@ describe("App", () => {
 
     expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
   });
+  it("selects an available time", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const service = await screen.findByRole("button", {
+      name: /deep tissue massage/i,
+    });
+
+    await user.click(service);
+
+    const slot = await screen.findByRole("button", { name: "09:00" });
+
+    await user.click(slot);
+
+    expect(slot).toHaveAttribute("aria-pressed", "true");
+  });
 });
