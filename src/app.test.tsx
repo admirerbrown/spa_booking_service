@@ -279,4 +279,104 @@ describe("App", () => {
 
     expect(service).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("refreshes availability after a generic hold failure", async () => {
+    const user = userEvent.setup();
+
+    getAvailability
+      .mockResolvedValueOnce([
+        {
+          therapistId: "therapist-1",
+          startTime: "09:00",
+          endTime: "10:00",
+        },
+        {
+          therapistId: "therapist-1",
+          startTime: "10:00",
+          endTime: "11:00",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          therapistId: "therapist-1",
+          startTime: "10:00",
+          endTime: "11:00",
+        },
+      ]);
+
+    createHold.mockRejectedValueOnce(
+      new BookingError(
+        "UNKNOWN",
+        "We could not complete the booking. Please try again.",
+      ),
+    );
+
+    render(<App />);
+
+    const service = await screen.findByRole("button", {
+      name: /deep tissue massage/i,
+    });
+
+    await user.click(service);
+
+    const failedSlot = await screen.findByRole("button", {
+      name: "09:00",
+    });
+
+    await user.click(failedSlot);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /we could not hold that appointment\. please try again/i,
+    );
+
+    expect(getAvailability).toHaveBeenCalledTimes(2);
+
+    expect(getAvailability).toHaveBeenLastCalledWith("service-1", "2026-10-05");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: "09:00" }),
+      ).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
+
+    expect(service).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows the remaining hold time after a hold is created", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(
+      new Date("2026-10-05T09:00:00Z").getTime(),
+    );
+
+    try {
+      createHold.mockResolvedValue({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+        heldUntil: "2026-10-05T09:05:00Z",
+      });
+
+      const user = userEvent.setup();
+
+      render(<App />);
+
+      const service = await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      });
+
+      await user.click(service);
+
+      const slot = await screen.findByRole("button", {
+        name: "09:00",
+      });
+
+      await user.click(slot);
+
+      expect(await screen.findByText(/appointment held/i)).toBeInTheDocument();
+
+      expect(screen.getByText(/5:00 remaining/i)).toBeInTheDocument();
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });

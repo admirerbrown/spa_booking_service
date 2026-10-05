@@ -24,6 +24,13 @@ type AvailableSlot = {
   endTime: string;
 };
 
+function formatRemaining(remainingMs: number): string {
+  const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")} remaining`;
+}
+
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
 
@@ -40,6 +47,11 @@ export default function App() {
     bookingFlowReducer,
     initialBookingFlowState,
   );
+
+  // Ticks once a second while a hold is active, purely to force the
+  // remaining-time label below to recompute. The actual deadline lives in
+  // bookingFlow.heldUntil, this tick never drives any booking logic itself.
+  const [holdTick, setHoldTick] = useState(0);
 
   useEffect(() => {
     supabase
@@ -119,6 +131,31 @@ export default function App() {
     dispatch({ type: "ACKNOWLEDGE_FAILURE" });
   }, [bookingFlow]);
 
+  // Drive the countdown display. Only runs while held; cleaned up on every
+  // status change so it never ticks in the background once the hold ends.
+  useEffect(() => {
+    if (bookingFlow.status !== "held") {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setHoldTick((current) => current + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [bookingFlow.status]);
+
+  const remainingLabel = useMemo(() => {
+    if (bookingFlow.status !== "held") {
+      return null;
+    }
+
+    const remainingMs = new Date(bookingFlow.heldUntil).getTime() - Date.now();
+
+    return formatRemaining(remainingMs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- holdTick forces recomputation each second
+  }, [bookingFlow, holdTick]);
+
   return (
     <main className="page-shell">
       <header>
@@ -194,6 +231,7 @@ export default function App() {
       {bookingFlow.status === "held" && (
         <section aria-labelledby="hold-heading">
           <h2 id="hold-heading">Appointment held</h2>
+          {remainingLabel && <p role="timer">{remainingLabel}</p>}
         </section>
       )}
     </main>
