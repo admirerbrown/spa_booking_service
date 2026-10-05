@@ -34,6 +34,7 @@ export default function App() {
   );
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [availabilityRefresh, setAvailabilityRefresh] = useState(0);
 
   const [bookingFlow, dispatch] = useReducer(
     bookingFlowReducer,
@@ -63,7 +64,7 @@ export default function App() {
     getAvailability(selectedServiceId, "2026-10-05").then((slots) => {
       setAvailableSlots(slots);
     });
-  }, [selectedServiceId]);
+  }, [selectedServiceId, availabilityRefresh]);
 
   useEffect(() => {
     if (bookingFlow.status !== "creating-hold") {
@@ -114,6 +115,7 @@ export default function App() {
     }
 
     setSelectedSlot(null);
+    setAvailabilityRefresh((current) => current + 1);
     dispatch({ type: "ACKNOWLEDGE_FAILURE" });
   }, [bookingFlow]);
 
