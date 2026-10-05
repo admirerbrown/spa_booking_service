@@ -45,14 +45,14 @@ export default function App() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0);
 
+  const [customerName, setCustomerName] = useState("");
+  const [customerContact, setCustomerContact] = useState("");
+
   const [bookingFlow, dispatch] = useReducer(
     bookingFlowReducer,
     initialBookingFlowState,
   );
 
-  // Ticks once a second while a hold is active, purely to force the
-  // remaining-time label below to recompute. The actual deadline lives in
-  // bookingFlow.heldUntil.
   const [holdTick, setHoldTick] = useState(0);
 
   useEffect(() => {
@@ -204,6 +204,44 @@ export default function App() {
   }, [bookingApi, bookingFlow, selectedServiceId]);
 
   useEffect(() => {
+    if (bookingFlow.status !== "confirming") {
+      return;
+    }
+
+    void bookingApi
+      .confirmHold({
+        bookingId: bookingFlow.bookingId,
+        confirmationToken: bookingFlow.confirmationToken,
+        name: bookingFlow.name,
+        contact: bookingFlow.contact,
+      })
+      .then((booking) => {
+        sessionStorage.removeItem("spa_booking_active_hold");
+
+        dispatch({
+          type: "CONFIRM_SUCCESS",
+          bookingId: booking.bookingId,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        });
+      })
+      .catch((cause: unknown) => {
+        const bookingError =
+          cause instanceof BookingError
+            ? cause
+            : new BookingError(
+                "UNKNOWN",
+                "We could not complete the booking. Please try again.",
+              );
+
+        dispatch({
+          type: "CONFIRM_FAILED",
+          code: bookingError.code,
+        });
+      });
+  }, [bookingApi, bookingFlow]);
+
+  useEffect(() => {
     if (bookingFlow.status !== "hold-failed") {
       return;
     }
@@ -233,8 +271,6 @@ export default function App() {
     dispatch({ type: "ACKNOWLEDGE_EXPIRY" });
   }, [bookingFlow]);
 
-  // Drive the countdown and proactively expire the hold when its deadline
-  // is reached. The server remains authoritative when confirmation happens.
   useEffect(() => {
     if (bookingFlow.status !== "held") {
       return;
@@ -347,6 +383,54 @@ export default function App() {
           <h2 id="hold-heading">Appointment held</h2>
 
           {remainingLabel && <p role="timer">{remainingLabel}</p>}
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+
+              dispatch({
+                type: "SUBMIT_DETAILS",
+                name: customerName,
+                contact: customerContact,
+              });
+            }}
+          >
+            <div>
+              <label htmlFor="customer-name">Name</label>
+
+              <input
+                id="customer-name"
+                name="name"
+                type="text"
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="customer-contact">Contact</label>
+
+              <input
+                id="customer-contact"
+                name="contact"
+                type="text"
+                value={customerContact}
+                onChange={(event) => setCustomerContact(event.target.value)}
+              />
+            </div>
+
+            <button type="submit">Confirm booking</button>
+          </form>
+        </section>
+      )}
+
+      {bookingFlow.status === "confirmed" && (
+        <section aria-labelledby="confirmation-heading">
+          <h2 id="confirmation-heading">Booking confirmed</h2>
+
+          <p>Your appointment is confirmed.</p>
+
+          <p>Booking reference: {bookingFlow.bookingId}</p>
         </section>
       )}
     </main>
