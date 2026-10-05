@@ -28,6 +28,7 @@ function formatRemaining(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
+
   return `${minutes}:${seconds.toString().padStart(2, "0")} remaining`;
 }
 
@@ -50,7 +51,7 @@ export default function App() {
 
   // Ticks once a second while a hold is active, purely to force the
   // remaining-time label below to recompute. The actual deadline lives in
-  // bookingFlow.heldUntil, this tick never drives any booking logic itself.
+  // bookingFlow.heldUntil.
   const [holdTick, setHoldTick] = useState(0);
 
   useEffect(() => {
@@ -131,19 +132,37 @@ export default function App() {
     dispatch({ type: "ACKNOWLEDGE_FAILURE" });
   }, [bookingFlow]);
 
-  // Drive the countdown display. Only runs while held; cleaned up on every
-  // status change so it never ticks in the background once the hold ends.
+  useEffect(() => {
+    if (bookingFlow.status !== "hold-expired") {
+      return;
+    }
+
+    setError("Your hold has expired. Please choose another time.");
+    setSelectedSlot(null);
+    dispatch({ type: "ACKNOWLEDGE_EXPIRY" });
+  }, [bookingFlow]);
+
+  // Drive the countdown and proactively expire the hold when its deadline
+  // is reached. The server remains authoritative when confirmation happens.
   useEffect(() => {
     if (bookingFlow.status !== "held") {
       return;
     }
 
     const interval = setInterval(() => {
+      const remainingMs =
+        new Date(bookingFlow.heldUntil).getTime() - Date.now();
+
+      if (remainingMs <= 0) {
+        dispatch({ type: "HOLD_EXPIRED" });
+        return;
+      }
+
       setHoldTick((current) => current + 1);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [bookingFlow.status]);
+  }, [bookingFlow.status, bookingFlow.heldUntil]);
 
   const remainingLabel = useMemo(() => {
     if (bookingFlow.status !== "held") {
@@ -153,14 +172,18 @@ export default function App() {
     const remainingMs = new Date(bookingFlow.heldUntil).getTime() - Date.now();
 
     return formatRemaining(remainingMs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- holdTick forces recomputation each second
+
+    // holdTick forces recomputation each second.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingFlow, holdTick]);
 
   return (
     <main className="page-shell">
       <header>
         <p className="eyebrow">THERAPIST BOOKING</p>
+
         <h1>Make time for yourself.</h1>
+
         <p className="lede">
           Choose a treatment, therapist, and time that works for you.
         </p>
@@ -174,6 +197,7 @@ export default function App() {
 
       <section aria-labelledby="services-heading">
         <h2 id="services-heading">Choose a service</h2>
+
         <div className="service-grid">
           {services.map((service) => (
             <button
@@ -188,7 +212,9 @@ export default function App() {
               }}
             >
               <h3>{service.name}</h3>
+
               <p>{service.description}</p>
+
               <footer>
                 <span>{service.duration_minutes} min</span>
                 <strong>GHS {Number(service.price).toFixed(2)}</strong>
@@ -201,6 +227,7 @@ export default function App() {
       {availableSlots.length > 0 && (
         <section aria-labelledby="availability-heading">
           <h2 id="availability-heading">Choose a time</h2>
+
           <div>
             {availableSlots.map((slot) => (
               <button
@@ -231,6 +258,7 @@ export default function App() {
       {bookingFlow.status === "held" && (
         <section aria-labelledby="hold-heading">
           <h2 id="hold-heading">Appointment held</h2>
+
           {remainingLabel && <p role="timer">{remainingLabel}</p>}
         </section>
       )}

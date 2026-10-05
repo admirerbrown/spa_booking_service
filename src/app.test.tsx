@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
 
 import App from "./App";
 import { BookingError } from "./lib/bookingApi";
@@ -377,6 +378,56 @@ describe("App", () => {
       expect(screen.getByText(/5:00 remaining/i)).toBeInTheDocument();
     } finally {
       vi.restoreAllMocks();
+    }
+  });
+
+  it("returns to slot selection when the hold expires", async () => {
+    const now = new Date("2026-10-05T09:00:00Z").getTime();
+    const dateNow = vi.spyOn(Date, "now").mockReturnValue(now);
+
+    try {
+      createHold.mockResolvedValue({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+        heldUntil: new Date(now + 1000).toISOString(),
+      });
+
+      const user = userEvent.setup();
+
+      render(<App />);
+
+      const service = await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      });
+
+      await user.click(service);
+
+      const slot = await screen.findByRole("button", {
+        name: "09:00",
+      });
+
+      await user.click(slot);
+
+      expect(await screen.findByText(/appointment held/i)).toBeInTheDocument();
+
+      // Move the authoritative clock to the hold deadline.
+      dateNow.mockReturnValue(now + 1000);
+
+      // The real interval in App runs once per second.
+      await waitFor(
+        () => {
+          expect(screen.getByRole("alert")).toHaveTextContent(
+            /your hold has expired/i,
+          );
+        },
+        { timeout: 2000 },
+      );
+
+      expect(screen.getByRole("button", { name: "09:00" })).toBeInTheDocument();
+
+      expect(screen.queryByText(/appointment held/i)).not.toBeInTheDocument();
+    } finally {
+      dateNow.mockRestore();
     }
   });
 });
