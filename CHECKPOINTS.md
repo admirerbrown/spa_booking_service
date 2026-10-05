@@ -104,3 +104,15 @@ not just asserted in the design.
 **Checkpoint status:** complete. Cancellation and rescheduling are proven
 end-to-end against real Postgres, with the same TDD rigor as the core
 booking flow.
+
+| Test file                            | What belongs there                        |
+| ------------------------------------ | ----------------------------------------- |
+| `app.test.tsx`                       | Basic application/UI flow                 |
+| `app.booking.test.tsx`               | Booking lifecycle and UI booking behavior |
+| `domain/availability.test.ts`        | Pure availability/slot rules              |
+| `domain/booking.test.ts`             | Pure booking rules                        |
+| `domain/bookingFlow.test.ts`         | Booking state machine/reducer             |
+| `lib/availabilityApi.test.ts`        | Availability API behavior                 |
+| `lib/bookingApi.test.ts`             | Booking RPC/API behavior with mocks       |
+| `lib/bookingApi.integration.test.ts` | Real/integration API behavior             |
+
