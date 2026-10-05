@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { bookingFlowReducer, initialBookingFlowState } from "./bookingFlow";
+import {
+  bookingFlowReducer,
+  initialBookingFlowState,
+  type BookingFlowState,
+} from "./bookingFlow";
 
 describe("booking flow reducer", () => {
   it("moves from selecting-slot to creating-hold when a slot is selected", () => {
@@ -352,6 +356,26 @@ describe("booking flow reducer", () => {
       bookingId: "booking-1",
       confirmationToken: "token-1",
       heldUntil: "2026-10-05T09:05:00Z",
+    });
+  });
+  it("returns to slot selection when persisted hold reconciliation fails", () => {
+    const state: BookingFlowState = {
+      status: "reconciling",
+      slot: {
+        therapistId: "therapist-1",
+        startTime: "2026-10-05T09:00:00Z",
+        endTime: "2026-10-05T10:00:00Z",
+      },
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+    };
+
+    expect(
+      bookingFlowReducer(state, {
+        type: "ACKNOWLEDGE_EXPIRY",
+      }),
+    ).toEqual({
+      status: "selecting-slot",
     });
   });
 });

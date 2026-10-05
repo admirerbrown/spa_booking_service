@@ -209,6 +209,9 @@ export function bookingFlowReducer(
           heldUntil: action.heldUntil,
         };
       }
+      if (action.type === "ACKNOWLEDGE_EXPIRY") {
+        return initialBookingFlowState;
+      }
 
       return state;
 
