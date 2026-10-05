@@ -34,7 +34,6 @@ function formatRemaining(remainingMs: number): string {
 
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
-
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
@@ -43,7 +42,6 @@ export default function App() {
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0);
-
   const [bookingFlow, dispatch] = useReducer(
     bookingFlowReducer,
     initialBookingFlowState,
@@ -91,6 +89,15 @@ export default function App() {
         startTime: bookingFlow.slot.startTime,
       })
       .then((hold) => {
+        sessionStorage.setItem(
+          "spa_booking_active_hold",
+          JSON.stringify({
+            bookingId: hold.bookingId,
+            confirmationToken: hold.confirmationToken,
+            heldUntil: hold.heldUntil,
+          }),
+        );
+
         dispatch({
           type: "HOLD_CREATED",
           bookingId: hold.bookingId,
@@ -137,6 +144,8 @@ export default function App() {
       return;
     }
 
+    sessionStorage.removeItem("spa_booking_active_hold");
+
     setError("Your hold has expired. Please choose another time.");
     setSelectedSlot(null);
     dispatch({ type: "ACKNOWLEDGE_EXPIRY" });
@@ -162,7 +171,7 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [bookingFlow.status, bookingFlow.heldUntil]);
+  }, [bookingFlow.status]);
 
   const remainingLabel = useMemo(() => {
     if (bookingFlow.status !== "held") {
@@ -181,9 +190,7 @@ export default function App() {
     <main className="page-shell">
       <header>
         <p className="eyebrow">THERAPIST BOOKING</p>
-
         <h1>Make time for yourself.</h1>
-
         <p className="lede">
           Choose a treatment, therapist, and time that works for you.
         </p>
@@ -212,7 +219,6 @@ export default function App() {
               }}
             >
               <h3>{service.name}</h3>
-
               <p>{service.description}</p>
 
               <footer>

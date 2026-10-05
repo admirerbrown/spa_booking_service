@@ -430,4 +430,47 @@ describe("App", () => {
       dateNow.mockRestore();
     }
   });
+  it("persists the active hold in session storage", async () => {
+    const now = new Date("2026-10-05T09:00:00Z").getTime();
+    vi.spyOn(Date, "now").mockReturnValue(now);
+
+    createHold.mockResolvedValue({
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+      heldUntil: new Date(now + 5 * 60 * 1000).toISOString(),
+    });
+
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const service = await screen.findByRole("button", {
+      name: /deep tissue massage/i,
+    });
+
+    await user.click(service);
+
+    const slot = await screen.findByRole("button", {
+      name: "09:00",
+    });
+
+    await user.click(slot);
+
+    await waitFor(() => {
+      expect(screen.getByText(/appointment held/i)).toBeInTheDocument();
+    });
+    expect(createHold).toHaveBeenCalledWith({
+      serviceId: "service-1",
+      therapistId: "therapist-1",
+      startTime: "2026-10-05T09:00:00Z",
+    });
+
+    expect(sessionStorage.getItem("spa_booking_active_hold")).toBe(
+      JSON.stringify({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+        heldUntil: new Date(now + 5 * 60 * 1000).toISOString(),
+      }),
+    );
+  });
 });
