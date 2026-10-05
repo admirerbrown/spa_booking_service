@@ -95,6 +95,7 @@ export default function App() {
 
     try {
       const parsed = JSON.parse(storedHold) as {
+        serviceId: string;
         bookingId: string;
         confirmationToken: string;
         heldUntil: string;
@@ -102,6 +103,7 @@ export default function App() {
       };
 
       if (
+        !parsed.serviceId ||
         !parsed.bookingId ||
         !parsed.confirmationToken ||
         !parsed.heldUntil ||
@@ -112,6 +114,8 @@ export default function App() {
         sessionStorage.removeItem("spa_booking_active_hold");
         return;
       }
+
+      setSelectedServiceId(parsed.serviceId);
 
       dispatch({
         type: "RESTORE_HOLD",
@@ -179,6 +183,7 @@ export default function App() {
         sessionStorage.setItem(
           "spa_booking_active_hold",
           JSON.stringify({
+            serviceId: selectedServiceId,
             bookingId: hold.bookingId,
             confirmationToken: hold.confirmationToken,
             heldUntil: hold.heldUntil,

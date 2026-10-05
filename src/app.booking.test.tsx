@@ -388,9 +388,10 @@ describe("App booking lifecycle", () => {
 
       expect(sessionStorage.getItem("spa_booking_active_hold")).toBe(
         JSON.stringify({
+          serviceId: "service-1",
           bookingId: "booking-1",
           confirmationToken: "token-1",
-          heldUntil: new Date(now + 5 * 60 * 1000).toISOString(),
+          heldUntil: "2026-10-05T09:05:00.000Z",
           slot: {
             therapistId: "therapist-1",
             startTime: "2026-10-05T09:00:00Z",
@@ -406,6 +407,7 @@ describe("App booking lifecycle", () => {
       sessionStorage.setItem(
         "spa_booking_active_hold",
         JSON.stringify({
+          serviceId: "service-1",
           bookingId: "booking-1",
           confirmationToken: "token-1",
           heldUntil: "2026-10-05T09:05:00Z",
@@ -443,6 +445,7 @@ describe("App booking lifecycle", () => {
       sessionStorage.setItem(
         "spa_booking_active_hold",
         JSON.stringify({
+          serviceId: "service-1",
           bookingId: "booking-1",
           confirmationToken: "token-1",
           heldUntil: "2026-10-05T09:05:00.000Z",
@@ -482,6 +485,7 @@ describe("App booking lifecycle", () => {
       sessionStorage.setItem(
         "spa_booking_active_hold",
         JSON.stringify({
+          serviceId: "service-1",
           bookingId: "booking-1",
           confirmationToken: "token-1",
           heldUntil: "2026-10-05T09:05:00.000Z",
@@ -853,5 +857,38 @@ describe("App booking lifecycle", () => {
 
       expect(sessionStorage.getItem("spa_booking_active_hold")).toBeNull();
     });
+  });
+
+  it("restores the selected service when a held booking is restored", async () => {
+    sessionStorage.setItem(
+      "spa_booking_active_hold",
+      JSON.stringify({
+        serviceId: "service-1",
+        bookingId: "booking-restored",
+        confirmationToken: "token-restored",
+        heldUntil: "2026-10-05T09:05:00Z",
+        slot: {
+          therapistId: "therapist-1",
+          startTime: "2026-10-05T09:00:00Z",
+          endTime: "2026-10-05T10:00:00Z",
+        },
+      }),
+    );
+
+    getBookingStatus.mockResolvedValue({
+      bookingId: "booking-restored",
+      status: "held",
+      heldUntil: "2026-10-05T09:05:00Z",
+      startTime: "2026-10-05T09:00:00Z",
+      endTime: "2026-10-05T10:00:00Z",
+    });
+
+    render(<App />);
+
+    const service = await screen.findByRole("button", {
+      name: /deep tissue massage/i,
+    });
+
+    expect(service).toHaveAttribute("aria-pressed", "true");
   });
 });
