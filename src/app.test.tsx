@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { BookingError } from "./lib/bookingApi";
 
 vi.mock("./lib/supabase", () => ({
   supabase: {
@@ -47,6 +48,33 @@ vi.mock("./lib/availabilityApi", () => ({
   ]),
 }));
 
+const createHold = vi.fn().mockResolvedValue({
+  bookingId: "booking-default",
+  confirmationToken: "token-default",
+  heldUntil: "2026-10-05T09:05:00Z",
+});
+
+vi.mock("./lib/bookingApi", () => {
+  class BookingError extends Error {
+    readonly code: string;
+
+    constructor(code: string, message: string) {
+      super(message);
+      this.name = "BookingError";
+      this.code = code;
+    }
+  }
+
+  return {
+    BookingError,
+    createBookingApi: () => ({
+      createHold,
+      confirmHold: vi.fn(),
+      getBookingStatus: vi.fn(),
+    }),
+  };
+});
+
 describe("App", () => {
   it("selects a service when the customer clicks it", async () => {
     const user = userEvent.setup();
@@ -79,8 +107,11 @@ describe("App", () => {
 
     expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
   });
+
   it("selects an available time", async () => {
     const user = userEvent.setup();
+
+    createHold.mockClear();
 
     render(<App />);
 
@@ -95,5 +126,93 @@ describe("App", () => {
     await user.click(slot);
 
     expect(slot).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("creates a hold when the user selects an available slot", async () => {
+    const user = userEvent.setup();
+
+    createHold.mockClear();
+    createHold.mockResolvedValue({
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+      heldUntil: "2026-10-05T09:05:00Z",
+    });
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    const slot = await screen.findByRole("button", {
+      name: "09:00",
+    });
+
+    await user.click(slot);
+
+    expect(createHold).toHaveBeenCalledWith({
+      serviceId: "service-1",
+      therapistId: "therapist-1",
+      startTime: "2026-10-05T09:00:00Z",
+    });
+  });
+
+  it("shows the held state after a hold is successfully created", async () => {
+    const user = userEvent.setup();
+
+    createHold.mockClear();
+    createHold.mockResolvedValue({
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+      heldUntil: "2026-10-05T09:05:00Z",
+    });
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    const slot = await screen.findByRole("button", {
+      name: "09:00",
+    });
+
+    await user.click(slot);
+
+    expect(await screen.findByText(/appointment held/i)).toBeInTheDocument();
+  });
+
+  it("shows an unavailable message when the selected slot can no longer be held", async () => {
+    const user = userEvent.setup();
+
+    createHold.mockClear();
+    createHold.mockRejectedValueOnce(
+      new BookingError(
+        "SLOT_UNAVAILABLE",
+        "That appointment is no longer available. Please choose another time.",
+      ),
+    );
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    const slot = await screen.findByRole("button", {
+      name: "09:00",
+    });
+
+    await user.click(slot);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /that appointment is no longer available\. please choose another time/i,
+    );
   });
 });

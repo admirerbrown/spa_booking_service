@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 
+import {
+  bookingFlowReducer,
+  initialBookingFlowState,
+} from "./domain/bookingFlow";
 import { getAvailability } from "./lib/availabilityApi";
+import { BookingError, createBookingApi } from "./lib/bookingApi";
 import { supabase } from "./lib/supabase";
 
 import "./app.css";
@@ -20,6 +25,8 @@ type AvailableSlot = {
 };
 
 export default function App() {
+  const bookingApi = useMemo(() => createBookingApi(supabase), []);
+
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
@@ -27,6 +34,11 @@ export default function App() {
   );
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+
+  const [bookingFlow, dispatch] = useReducer(
+    bookingFlowReducer,
+    initialBookingFlowState,
+  );
 
   useEffect(() => {
     supabase
@@ -53,6 +65,58 @@ export default function App() {
     });
   }, [selectedServiceId]);
 
+  useEffect(() => {
+    if (bookingFlow.status !== "creating-hold") {
+      return;
+    }
+
+    void bookingApi
+      .createHold({
+        serviceId: selectedServiceId!,
+        therapistId: bookingFlow.slot.therapistId,
+        startTime: bookingFlow.slot.startTime,
+      })
+      .then((hold) => {
+        dispatch({
+          type: "HOLD_CREATED",
+          bookingId: hold.bookingId,
+          confirmationToken: hold.confirmationToken,
+          heldUntil: hold.heldUntil,
+        });
+      })
+      .catch((cause: unknown) => {
+        const bookingError =
+          cause instanceof BookingError
+            ? cause
+            : new BookingError(
+                "UNKNOWN",
+                "We could not complete the booking. Please try again.",
+              );
+
+        dispatch({
+          type: "HOLD_FAILED",
+          code: bookingError.code,
+        });
+      });
+  }, [bookingApi, bookingFlow, selectedServiceId]);
+
+  useEffect(() => {
+    if (bookingFlow.status !== "hold-failed") {
+      return;
+    }
+
+    if (bookingFlow.reason === "slot-unavailable") {
+      setError(
+        "That appointment is no longer available. Please choose another time.",
+      );
+    } else {
+      setError("We could not hold that appointment. Please try again.");
+    }
+
+    setSelectedSlot(null);
+    dispatch({ type: "ACKNOWLEDGE_FAILURE" });
+  }, [bookingFlow]);
+
   return (
     <main className="page-shell">
       <header>
@@ -71,7 +135,6 @@ export default function App() {
 
       <section aria-labelledby="services-heading">
         <h2 id="services-heading">Choose a service</h2>
-
         <div className="service-grid">
           {services.map((service) => (
             <button
@@ -79,12 +142,14 @@ export default function App() {
               className="service-card"
               key={service.id}
               aria-pressed={selectedServiceId === service.id}
-              onClick={() => setSelectedServiceId(service.id)}
+              onClick={() => {
+                setError(null);
+                setSelectedServiceId(service.id);
+                setSelectedSlot(null);
+              }}
             >
               <h3>{service.name}</h3>
-
               <p>{service.description}</p>
-
               <footer>
                 <span>{service.duration_minutes} min</span>
                 <strong>GHS {Number(service.price).toFixed(2)}</strong>
@@ -97,19 +162,36 @@ export default function App() {
       {availableSlots.length > 0 && (
         <section aria-labelledby="availability-heading">
           <h2 id="availability-heading">Choose a time</h2>
-
           <div>
             {availableSlots.map((slot) => (
               <button
                 key={slot.startTime}
                 type="button"
                 aria-pressed={selectedSlot === slot.startTime}
-                onClick={() => setSelectedSlot(slot.startTime)}
+                onClick={() => {
+                  setError(null);
+                  setSelectedSlot(slot.startTime);
+
+                  dispatch({
+                    type: "SELECT_SLOT",
+                    slot: {
+                      therapistId: slot.therapistId,
+                      startTime: `2026-10-05T${slot.startTime}:00Z`,
+                      endTime: `2026-10-05T${slot.endTime}:00Z`,
+                    },
+                  });
+                }}
               >
                 {slot.startTime}
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {bookingFlow.status === "held" && (
+        <section aria-labelledby="hold-heading">
+          <h2 id="hold-heading">Appointment held</h2>
         </section>
       )}
     </main>
