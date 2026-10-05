@@ -1,6 +1,8 @@
 import { render, screen } from "@testing-library/react";
+
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 
@@ -91,6 +93,10 @@ describe("App", () => {
     });
 
     getBookingStatus.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe("service and availability flow", () => {
@@ -200,6 +206,40 @@ describe("App", () => {
       await user.click(slot);
 
       expect(await screen.findByText(/appointment held/i)).toBeInTheDocument();
+    });
+
+    it("uses the current date for availability and booking holds", async () => {
+      vi.setSystemTime(new Date("2026-10-06T09:00:00Z"));
+
+      const user = userEvent.setup();
+
+      createHold.mockResolvedValue({
+        bookingId: "booking-current-date",
+        confirmationToken: "token-current-date",
+        heldUntil: "2026-10-06T09:05:00Z",
+      });
+
+      render(<App />);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: /deep tissue massage/i,
+        }),
+      );
+
+      expect(getAvailability).toHaveBeenCalledWith("service-1", "2026-10-06");
+
+      const slot = await screen.findByRole("button", {
+        name: "09:00",
+      });
+
+      await user.click(slot);
+
+      expect(createHold).toHaveBeenCalledWith({
+        serviceId: "service-1",
+        therapistId: "therapist-1",
+        startTime: "2026-10-06T09:00:00Z",
+      });
     });
   });
 });

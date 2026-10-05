@@ -25,6 +25,10 @@ type AvailableSlot = {
   endTime: string;
 };
 
+function formatDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
 function formatRemaining(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -35,6 +39,8 @@ function formatRemaining(remainingMs: number): string {
 
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
+
+  const bookingDate = useMemo(() => formatDate(new Date()), []);
 
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +81,10 @@ export default function App() {
       return;
     }
 
-    getAvailability(selectedServiceId, "2026-10-05").then((slots) => {
+    getAvailability(selectedServiceId, bookingDate).then((slots) => {
       setAvailableSlots(slots);
     });
-  }, [selectedServiceId, availabilityRefresh]);
+  }, [selectedServiceId, bookingDate, availabilityRefresh]);
 
   useEffect(() => {
     const storedHold = sessionStorage.getItem("spa_booking_active_hold");
@@ -365,8 +371,8 @@ export default function App() {
                     type: "SELECT_SLOT",
                     slot: {
                       therapistId: slot.therapistId,
-                      startTime: `2026-10-05T${slot.startTime}:00Z`,
-                      endTime: `2026-10-05T${slot.endTime}:00Z`,
+                      startTime: `${bookingDate}T${slot.startTime}:00Z`,
+                      endTime: `${bookingDate}T${slot.endTime}:00Z`,
                     },
                   });
                 }}
