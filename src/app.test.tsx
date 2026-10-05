@@ -1,14 +1,14 @@
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 
 import App from "./App";
 import { BookingError } from "./lib/bookingApi";
 
-const { getAvailability, createHold } = vi.hoisted(() => ({
+const { getAvailability, createHold, getBookingStatus } = vi.hoisted(() => ({
   getAvailability: vi.fn(),
   createHold: vi.fn(),
+  getBookingStatus: vi.fn(),
 }));
 
 vi.mock("./lib/supabase", () => ({
@@ -51,13 +51,15 @@ vi.mock("./lib/bookingApi", async (importOriginal) => {
     createBookingApi: () => ({
       createHold,
       confirmHold: vi.fn(),
-      getBookingStatus: vi.fn(),
+      getBookingStatus,
     }),
   };
 });
 
 describe("App", () => {
   beforeEach(() => {
+    sessionStorage.clear();
+
     getAvailability.mockReset();
     getAvailability.mockResolvedValue([
       {
@@ -78,11 +80,12 @@ describe("App", () => {
       confirmationToken: "token-default",
       heldUntil: "2026-10-05T09:05:00Z",
     });
+
+    getBookingStatus.mockReset();
   });
 
   it("selects a service when the customer clicks it", async () => {
     const user = userEvent.setup();
-
     render(<App />);
 
     const service = await screen.findByRole("button", {
@@ -96,7 +99,6 @@ describe("App", () => {
 
   it("shows available appointment slots after selecting a service", async () => {
     const user = userEvent.setup();
-
     render(<App />);
 
     const service = await screen.findByRole("button", {
@@ -114,7 +116,6 @@ describe("App", () => {
 
   it("selects an available time", async () => {
     const user = userEvent.setup();
-
     render(<App />);
 
     const service = await screen.findByRole("button", {
@@ -267,7 +268,6 @@ describe("App", () => {
     );
 
     expect(getAvailability).toHaveBeenCalledTimes(2);
-
     expect(getAvailability).toHaveBeenLastCalledWith("service-1", "2026-10-05");
 
     await waitFor(() => {
@@ -277,7 +277,6 @@ describe("App", () => {
     });
 
     expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
-
     expect(service).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -331,7 +330,6 @@ describe("App", () => {
     );
 
     expect(getAvailability).toHaveBeenCalledTimes(2);
-
     expect(getAvailability).toHaveBeenLastCalledWith("service-1", "2026-10-05");
 
     await waitFor(() => {
@@ -341,7 +339,6 @@ describe("App", () => {
     });
 
     expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
-
     expect(service).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -358,7 +355,6 @@ describe("App", () => {
       });
 
       const user = userEvent.setup();
-
       render(<App />);
 
       const service = await screen.findByRole("button", {
@@ -393,7 +389,6 @@ describe("App", () => {
       });
 
       const user = userEvent.setup();
-
       render(<App />);
 
       const service = await screen.findByRole("button", {
@@ -410,10 +405,8 @@ describe("App", () => {
 
       expect(await screen.findByText(/appointment held/i)).toBeInTheDocument();
 
-      // Move the authoritative clock to the hold deadline.
       dateNow.mockReturnValue(now + 1000);
 
-      // The real interval in App runs once per second.
       await waitFor(
         () => {
           expect(screen.getByRole("alert")).toHaveTextContent(
@@ -430,8 +423,10 @@ describe("App", () => {
       dateNow.mockRestore();
     }
   });
+
   it("persists the active hold in session storage", async () => {
     const now = new Date("2026-10-05T09:00:00Z").getTime();
+
     vi.spyOn(Date, "now").mockReturnValue(now);
 
     createHold.mockResolvedValue({
@@ -441,7 +436,6 @@ describe("App", () => {
     });
 
     const user = userEvent.setup();
-
     render(<App />);
 
     const service = await screen.findByRole("button", {
@@ -459,6 +453,7 @@ describe("App", () => {
     await waitFor(() => {
       expect(screen.getByText(/appointment held/i)).toBeInTheDocument();
     });
+
     expect(createHold).toHaveBeenCalledWith({
       serviceId: "service-1",
       therapistId: "therapist-1",
@@ -470,7 +465,49 @@ describe("App", () => {
         bookingId: "booking-1",
         confirmationToken: "token-1",
         heldUntil: new Date(now + 5 * 60 * 1000).toISOString(),
+        slot: {
+          therapistId: "therapist-1",
+          startTime: "2026-10-05T09:00:00Z",
+          endTime: "2026-10-05T10:00:00Z",
+        },
       }),
     );
+  });
+
+  it("reconciles a persisted active hold after the app is reopened", async () => {
+    sessionStorage.setItem(
+      "spa_booking_active_hold",
+      JSON.stringify({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+        heldUntil: "2026-10-05T09:05:00Z",
+        slot: {
+          therapistId: "therapist-1",
+          startTime: "2026-10-05T09:00:00Z",
+          endTime: "2026-10-05T10:00:00Z",
+        },
+      }),
+    );
+
+    getBookingStatus.mockResolvedValue({
+      bookingId: "booking-1",
+      status: "held",
+      heldUntil: "2026-10-05T09:05:00Z",
+      startTime: "2026-10-05T09:00:00Z",
+      endTime: "2026-10-05T10:00:00Z",
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(getBookingStatus).toHaveBeenCalledWith({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+      });
+    });
+
+    expect(await screen.findByText(/appointment held/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/5:00 remaining/i)).toBeInTheDocument();
   });
 });

@@ -4,6 +4,7 @@ import {
   bookingFlowReducer,
   initialBookingFlowState,
 } from "./domain/bookingFlow";
+
 import { getAvailability } from "./lib/availabilityApi";
 import { BookingError, createBookingApi } from "./lib/bookingApi";
 import { supabase } from "./lib/supabase";
@@ -34,6 +35,7 @@ function formatRemaining(remainingMs: number): string {
 
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
+
   const [services, setServices] = useState<Service[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
@@ -42,6 +44,7 @@ export default function App() {
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0);
+
   const [bookingFlow, dispatch] = useReducer(
     bookingFlowReducer,
     initialBookingFlowState,
@@ -78,6 +81,84 @@ export default function App() {
   }, [selectedServiceId, availabilityRefresh]);
 
   useEffect(() => {
+    const storedHold = sessionStorage.getItem("spa_booking_active_hold");
+
+    if (!storedHold) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(storedHold) as {
+        bookingId: string;
+        confirmationToken: string;
+        heldUntil: string;
+        slot: AvailableSlot;
+      };
+
+      if (
+        !parsed.bookingId ||
+        !parsed.confirmationToken ||
+        !parsed.heldUntil ||
+        !parsed.slot?.therapistId ||
+        !parsed.slot?.startTime ||
+        !parsed.slot?.endTime
+      ) {
+        sessionStorage.removeItem("spa_booking_active_hold");
+        return;
+      }
+
+      dispatch({
+        type: "RESTORE_HOLD",
+        bookingId: parsed.bookingId,
+        confirmationToken: parsed.confirmationToken,
+        slot: {
+          therapistId: parsed.slot.therapistId,
+          startTime: parsed.slot.startTime,
+          endTime: parsed.slot.endTime,
+        },
+      });
+    } catch {
+      sessionStorage.removeItem("spa_booking_active_hold");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (bookingFlow.status !== "reconciling") {
+      return;
+    }
+
+    void bookingApi
+      .getBookingStatus({
+        bookingId: bookingFlow.bookingId,
+        confirmationToken: bookingFlow.confirmationToken,
+      })
+      .then((status) => {
+        if (status.status === "held" && status.heldUntil) {
+          dispatch({
+            type: "STATUS_HELD",
+            heldUntil: status.heldUntil,
+          });
+          return;
+        }
+
+        if (status.status === "confirmed") {
+          sessionStorage.removeItem("spa_booking_active_hold");
+
+          dispatch({
+            type: "STATUS_CONFIRMED",
+            startTime: status.startTime,
+            endTime: status.endTime,
+          });
+        }
+      })
+      .catch(() => {
+        sessionStorage.removeItem("spa_booking_active_hold");
+        setError("Your previous booking could not be restored.");
+        dispatch({ type: "ACKNOWLEDGE_EXPIRY" });
+      });
+  }, [bookingApi, bookingFlow]);
+
+  useEffect(() => {
     if (bookingFlow.status !== "creating-hold") {
       return;
     }
@@ -95,6 +176,7 @@ export default function App() {
             bookingId: hold.bookingId,
             confirmationToken: hold.confirmationToken,
             heldUntil: hold.heldUntil,
+            slot: bookingFlow.slot,
           }),
         );
 
@@ -181,7 +263,6 @@ export default function App() {
     const remainingMs = new Date(bookingFlow.heldUntil).getTime() - Date.now();
 
     return formatRemaining(remainingMs);
-
     // holdTick forces recomputation each second.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingFlow, holdTick]);

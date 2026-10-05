@@ -23,6 +23,30 @@ describe("booking flow reducer", () => {
     });
   });
 
+  it("moves from selecting-slot to reconciling when an active hold is restored", () => {
+    const state = bookingFlowReducer(initialBookingFlowState, {
+      type: "RESTORE_HOLD",
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+      slot: {
+        therapistId: "therapist-1",
+        startTime: "2026-10-05T09:00:00Z",
+        endTime: "2026-10-05T10:00:00Z",
+      },
+    });
+
+    expect(state).toEqual({
+      status: "reconciling",
+      slot: {
+        therapistId: "therapist-1",
+        startTime: "2026-10-05T09:00:00Z",
+        endTime: "2026-10-05T10:00:00Z",
+      },
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+    });
+  });
+
   it("moves from creating-hold to held when the hold succeeds", () => {
     const state = bookingFlowReducer(
       {

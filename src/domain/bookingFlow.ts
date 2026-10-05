@@ -14,13 +14,8 @@ export type BookingErrorCode =
   | "UNKNOWN";
 
 export type BookingFlowState =
-  | {
-      status: "selecting-slot";
-    }
-  | {
-      status: "creating-hold";
-      slot: BookingSlot;
-    }
+  | { status: "selecting-slot" }
+  | { status: "creating-hold"; slot: BookingSlot }
   | {
       status: "held";
       slot: BookingSlot;
@@ -32,9 +27,7 @@ export type BookingFlowState =
       status: "hold-failed";
       reason: "slot-unavailable" | "unknown";
     }
-  | {
-      status: "hold-expired";
-    }
+  | { status: "hold-expired" }
   | {
       status: "confirming";
       slot: BookingSlot;
@@ -58,8 +51,11 @@ export type BookingFlowState =
     };
 
 export type BookingFlowAction =
+  | { type: "SELECT_SLOT"; slot: BookingSlot }
   | {
-      type: "SELECT_SLOT";
+      type: "RESTORE_HOLD";
+      bookingId: string;
+      confirmationToken: string;
       slot: BookingSlot;
     }
   | {
@@ -68,43 +64,24 @@ export type BookingFlowAction =
       confirmationToken: string;
       heldUntil: string;
     }
-  | {
-      type: "HOLD_FAILED";
-      code: BookingErrorCode;
-    }
-  | {
-      type: "ACKNOWLEDGE_FAILURE";
-    }
-  | {
-      type: "SUBMIT_DETAILS";
-      name: string;
-      contact: string;
-    }
-  | {
-      type: "HOLD_EXPIRED";
-    }
-  | {
-      type: "ACKNOWLEDGE_EXPIRY";
-    }
+  | { type: "HOLD_FAILED"; code: BookingErrorCode }
+  | { type: "ACKNOWLEDGE_FAILURE" }
+  | { type: "SUBMIT_DETAILS"; name: string; contact: string }
+  | { type: "HOLD_EXPIRED" }
+  | { type: "ACKNOWLEDGE_EXPIRY" }
   | {
       type: "CONFIRM_SUCCESS";
       bookingId: string;
       startTime: string;
       endTime: string;
     }
-  | {
-      type: "CONFIRM_FAILED";
-      code: BookingErrorCode;
-    }
+  | { type: "CONFIRM_FAILED"; code: BookingErrorCode }
   | {
       type: "STATUS_CONFIRMED";
       startTime: string;
       endTime: string;
     }
-  | {
-      type: "STATUS_HELD";
-      heldUntil: string;
-    };
+  | { type: "STATUS_HELD"; heldUntil: string };
 
 export const initialBookingFlowState: BookingFlowState = {
   status: "selecting-slot",
@@ -120,6 +97,15 @@ export function bookingFlowReducer(
         return {
           status: "creating-hold",
           slot: action.slot,
+        };
+      }
+
+      if (action.type === "RESTORE_HOLD") {
+        return {
+          status: "reconciling",
+          slot: action.slot,
+          bookingId: action.bookingId,
+          confirmationToken: action.confirmationToken,
         };
       }
 
@@ -167,9 +153,7 @@ export function bookingFlowReducer(
       }
 
       if (action.type === "HOLD_EXPIRED") {
-        return {
-          status: "hold-expired",
-        };
+        return { status: "hold-expired" };
       }
 
       return state;
@@ -186,9 +170,7 @@ export function bookingFlowReducer(
 
       if (action.type === "CONFIRM_FAILED") {
         if (action.code === "HOLD_EXPIRED") {
-          return {
-            status: "hold-expired",
-          };
+          return { status: "hold-expired" };
         }
 
         return {
