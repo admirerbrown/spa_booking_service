@@ -17,17 +17,27 @@ export function BookingAside({
 }: BookingAsideProps) {
   return (
     <aside className="space-y-4 lg:sticky lg:top-6">
-      <section className="overflow-hidden rounded-[1.2rem] border border-forest-900/10 bg-white/75 shadow-[0_10px_30px_rgba(42,56,43,0.045)]">
-        <div className="border-b border-forest-900/10 px-5 py-4">
-          <p className="section-kicker">A little reassurance</p>
-          <h2 className="mt-1 font-serif text-[22px] text-forest-950">
-            The details, taken care of.
-          </h2>
+      <section className="overflow-hidden rounded-[1.35rem] border border-forest-900/10 bg-[#fffdf8] shadow-[0_14px_38px_rgba(42,56,43,0.08)]">
+        <div className="flex items-start justify-between gap-3 bg-forest-950 px-5 py-5 text-ivory-50">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brass-300">
+              A little reassurance
+            </p>
+            <h2 className="mt-2 font-serif text-[23px] leading-tight">
+              The details, taken care of.
+            </h2>
+          </div>
+          <span
+            aria-hidden="true"
+            className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full border border-brass-300/50 font-serif text-lg text-brass-200"
+          >
+            ✳
+          </span>
         </div>
         <div className="space-y-4 px-5 py-5">
           {comforts.map((comfort, index) => (
             <div key={comfort} className="flex items-center gap-3">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-sage-100 text-[11px] text-forest-800">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-forest-900/10 bg-sage-100 text-[11px] text-forest-800">
                 {index === 0 ? "✳" : "✓"}
               </span>
               <span className="text-xs leading-5 text-forest-800/75">
@@ -36,7 +46,7 @@ export function BookingAside({
             </div>
           ))}
         </div>
-        <div className="mx-5 border-t border-forest-900/10 py-4">
+        <div className="mx-4 mb-4 rounded-xl border border-forest-900/10 bg-ivory-100/65 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-forest-800/55">
               Your reservation
@@ -72,7 +82,7 @@ export function BookingAside({
           aria-hidden="true"
           className="absolute -right-8 -top-10 size-28 rounded-full border border-white/10"
         />
-        <p className="relative font-serif text-[19px] italic text-brass-200">
+        <p className="relative font-serif text-[20px] italic leading-snug text-brass-200">
           “Rest is not a luxury.”
         </p>
         <p className="relative mt-2 text-[9px] font-medium uppercase tracking-[0.15em] text-ivory-100/55">

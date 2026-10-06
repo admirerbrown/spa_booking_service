@@ -7,11 +7,11 @@ type ServicePickerProps = {
   onSelect: (serviceId: string) => void;
 };
 
-const artwork = [
-  "from-[#b89572] via-[#d7baa0] to-[#7d8e76]",
-  "from-[#85917b] via-[#c3b49a] to-[#d6b79c]",
-  "from-[#b59c83] via-[#dfc9ab] to-[#8b9982]",
-  "from-[#758477] via-[#c3b091] to-[#b98e78]",
+const serviceImages = [
+  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1000&h=560&q=85",
+  "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=1000&h=560&q=85",
+  "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1000&h=560&q=85",
+  "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1000&h=560&q=85",
 ];
 
 export function ServicePicker({
@@ -21,23 +21,33 @@ export function ServicePicker({
   onSelect,
 }: ServicePickerProps) {
   return (
-    <section aria-labelledby="services-heading" id="treatments">
-      <div className="mb-6 border-b border-forest-900/10 pb-5 sm:mb-8 sm:flex sm:items-end sm:justify-between sm:gap-8 sm:pb-6">
-        <div className="max-w-xl">
-          <p className="section-kicker">01 <span>—</span> Begin here</p>
-          <h2
-            id="services-heading"
-            className="mt-2 font-serif text-[32px] font-normal leading-[1.08] tracking-[-0.035em] text-forest-950 sm:text-[40px]"
-          >
-            Choose your ritual
-          </h2>
-          <p className="mt-3 max-w-lg text-sm leading-6 text-forest-800/65">
-            A little time set aside just for you. Find the treatment that feels
-            right, then choose a time to visit.
-          </p>
-        </div>
-        <p className="mt-4 hidden max-w-47.5 border-l border-brass-500/50 pl-4 text-xs leading-5 text-forest-800/60 sm:block">
-          Grounding care. Unhurried moments. Room to exhale.
+    <section
+      aria-labelledby="services-heading"
+      id="treatments"
+      className="scroll-mt-8 px-5 py-7 sm:px-7 sm:py-9"
+    >
+      <div className="mx-auto mb-8 max-w-2xl pb-7 text-center sm:mb-10 sm:pb-9">
+        <p className="inline-flex items-center gap-3 rounded-full border border-brass-500 bg-brass-500 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-forest-950 shadow-sm sm:text-xs">
+          <span className="font-serif text-sm italic text-forest-950">01</span>
+          <span aria-hidden="true" className="h-px w-5 bg-forest-950/45" />
+          Begin here
+        </p>
+        <h2
+          id="services-heading"
+          className="mt-4 font-serif text-[40px] font-normal leading-[1.05] tracking-[-0.04em] text-forest-950 sm:text-[52px]"
+        >
+          Choose your ritual
+        </h2>
+        <p className="mx-auto mt-4 max-w-xl font-serif text-[17px] leading-7 text-forest-800/75 sm:text-lg">
+          A little time set aside just for you. Find the treatment that feels
+          right, then choose a time to visit.
+        </p>
+        <p className="mt-5 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 font-serif text-[13px] italic tracking-[0.04em] text-forest-800/70 sm:text-sm">
+          <span>Grounding care</span>
+          <span aria-hidden="true" className="text-brass-600">✳</span>
+          <span>Unhurried moments</span>
+          <span aria-hidden="true" className="text-brass-600">✳</span>
+          <span>Room to exhale</span>
         </p>
       </div>
 
@@ -58,7 +68,7 @@ export function ServicePicker({
         </p>
       )}
 
-      <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 sm:gap-5">
+      <div className="grid auto-rows-fr gap-5 sm:grid-cols-2 sm:gap-6">
         {services.map((service, index) => {
           const isSelected = selectedServiceId === service.id;
 
@@ -68,20 +78,23 @@ export function ServicePicker({
               key={service.id}
               aria-pressed={isSelected}
               onClick={() => onSelect(service.id)}
-              className={`service-card group relative flex min-h-75 flex-col overflow-hidden rounded-[1.15rem] border bg-white text-left transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(42,56,43,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2 ${
+              className={`service-card group relative flex min-h-[21rem] flex-col overflow-hidden rounded-b-[1.35rem] border bg-[#f5f0e7] text-left transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(42,56,43,0.11)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2 ${
                 isSelected
                   ? "border-forest-800 shadow-[0_12px_36px_rgba(42,56,43,0.12)]"
-                  : "border-forest-900/10 shadow-[0_5px_20px_rgba(42,56,43,0.035)] hover:border-forest-900/25"
+                  : "border-forest-900/10 shadow-[0_8px_24px_rgba(42,56,43,0.045)] hover:border-forest-900/25"
               }`}
             >
               <span
-                aria-hidden="true"
-                className={`service-art relative block h-33 overflow-hidden bg-linear-to-br ${artwork[index % artwork.length]}`}
+                className="service-art relative block h-40 overflow-hidden bg-forest-900 sm:h-44"
               >
-                <span className="absolute -right-4 -top-14 size-44 rounded-full border border-white/30" />
-                <span className="absolute -right-1 -top-7 size-32 rounded-full border border-white/35" />
-                <span className="absolute -right-7 -top-1 size-20 rounded-full border border-white/40" />
-                <span className="absolute inset-0 bg-linear-to-r from-black/15 via-transparent to-white/10" />
+                <img
+                  src={serviceImages[index % serviceImages.length]}
+                  alt={`${service.name} spa treatment`}
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 size-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                />
+                <span aria-hidden="true" className="absolute inset-0 bg-linear-to-t from-forest-950/50 via-forest-950/5 to-transparent" />
                 <span className="absolute bottom-4 left-5 flex size-8 items-center justify-center rounded-full border border-white/55 bg-white/10 font-serif text-sm italic text-white backdrop-blur-sm">
                   0{index + 1}
                 </span>
@@ -95,8 +108,8 @@ export function ServicePicker({
                 )}
               </span>
 
-              <span className="flex flex-1 flex-col px-5 pb-5 pt-5 sm:px-6">
-                <span className="font-serif text-[22px] leading-snug tracking-[-0.02em] text-forest-950">
+              <span className="flex flex-1 flex-col px-6 pb-6 pt-5 sm:px-7">
+                <span className="font-serif text-[23px] leading-snug tracking-[-0.025em] text-forest-950">
                   {service.name}
                 </span>
                 <span className="mt-2 line-clamp-2 min-h-10 text-[13px] leading-5 text-forest-800/65">
@@ -119,8 +132,11 @@ export function ServicePicker({
                       GHS {Number(service.price).toFixed(2)}
                     </span>
                   </span>
-                  <span aria-hidden="true" className="mb-1 text-lg text-brass-600 transition-transform group-hover:translate-x-1">
-                    →
+                  <span className="mb-0.5 inline-flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-forest-800/65">
+                    Choose
+                    <span aria-hidden="true" className="text-base text-brass-600 transition-transform group-hover:translate-x-1">
+                      →
+                    </span>
                   </span>
                 </span>
               </span>

@@ -480,7 +480,9 @@ export default function App() {
           bookingPage === "availability" ? "Choose an appointment time" : undefined
         }
         className={`mx-auto grid max-w-7xl gap-8 px-5 pb-16 sm:px-8 sm:pb-24 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14 ${
-          bookingPage === "treatments" ? "pt-2" : "pt-8 sm:pt-10"
+          bookingPage === "treatments"
+            ? "bg-[#f8f5ee] pt-12 sm:pt-16"
+            : "pt-8 sm:pt-10"
         }`}
       >
         <div className="min-w-0 space-y-9 sm:space-y-11">
