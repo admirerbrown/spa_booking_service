@@ -66,6 +66,39 @@ function formatRemaining(remainingMs: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")} remaining`;
 }
 
+const testimonials = [
+  {
+    quote:
+      "From the first hello, everything felt calm and considered. I left feeling lighter.",
+    treatment: "A moment of calm",
+    rating: 5,
+  },
+  {
+    quote:
+      "The massage was exactly what I needed — unhurried, thoughtful, and deeply restorative.",
+    treatment: "Time to unwind",
+    rating: 5,
+  },
+  {
+    quote:
+      "A beautiful little pause in a busy week. I’m already looking forward to coming back.",
+    treatment: "A welcome reset",
+    rating: 4,
+  },
+  {
+    quote:
+      "Every detail felt welcoming, and I left with a sense of calm that lasted all day.",
+    treatment: "Room to recharge",
+    rating: 5,
+  },
+  {
+    quote:
+      "Such a thoughtful experience from start to finish. I can’t wait for my next visit.",
+    treatment: "A little self-care",
+    rating: 4,
+  },
+];
+
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
 
@@ -104,6 +137,22 @@ export default function App() {
   );
 
   const [holdTick, setHoldTick] = useState(0);
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
+
+  useEffect(() => {
+    if (
+      bookingPage !== "treatments" ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+    ) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveTestimonial((current) => (current + 1) % testimonials.length);
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeTestimonial, bookingPage]);
 
   useEffect(() => {
     if (previousBookingPage.current === bookingPage) {
@@ -485,7 +534,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-ivory-100 text-forest-950">
+    <div id="page-top" className="min-h-screen bg-ivory-100 text-forest-950">
       <BookingHeader
         activeStep={activeStep}
         isConfirmed={isConfirmed}
@@ -691,9 +740,9 @@ export default function App() {
                       Payment &amp; reservation
                     </p>
                     <p className="mt-2 text-xs leading-5 text-forest-800/75">
-                      Your appointment is reserved only after payment is
-                      completed. Payment is not collected in this booking flow
-                      yet.
+                      Online payment is not available in this booking flow yet.
+                      Your appointment is confirmed when you submit your
+                      details.
                     </p>
                   </div>
                 </div>
@@ -822,9 +871,9 @@ export default function App() {
         />
         <div className="mx-auto max-w-7xl">
           <div className="relative mx-auto mb-10 max-w-xl text-center sm:mb-12">
-            <p className="inline-flex items-center gap-3 rounded-full border border-brass-500/35 bg-ivory-50/60 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-forest-800/70">
+            <p className="inline-flex items-center gap-3 rounded-full border border-brass-500/35 bg-ivory-50/60 px-4 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-forest-800/70">
               <span aria-hidden="true" className="text-brass-600">✳</span>
-              A moment to exhale
+              Cleint testimonials
               <span aria-hidden="true" className="text-brass-600">✳</span>
             </p>
             <h2
@@ -838,87 +887,165 @@ export default function App() {
             </p>
           </div>
 
-          <div className="relative grid gap-5 md:grid-cols-3">
-            {[
-              {
-                quote:
-                  "From the first hello, everything felt calm and considered. I left feeling lighter.",
-                treatment: "A moment of calm",
-              },
-              {
-                quote:
-                  "The massage was exactly what I needed — unhurried, thoughtful, and deeply restorative.",
-                treatment: "Time to unwind",
-              },
-              {
-                quote:
-                  "A beautiful little pause in a busy week. I’m already looking forward to coming back.",
-                treatment: "A welcome reset",
-              },
-            ].map((testimonial) => (
-              <figure
-                key={testimonial.treatment}
-                className="group flex min-h-56 flex-col rounded-[1.35rem] border border-forest-900/10 bg-ivory-50/85 p-6 shadow-[0_10px_28px_rgba(42,56,43,0.045)] transition-all duration-300 hover:-translate-y-1 hover:border-brass-500/35 hover:shadow-[0_18px_36px_rgba(42,56,43,0.09)] sm:p-7"
-              >
-                <div className="flex items-center justify-between">
-                  <span
-                    aria-hidden="true"
-                    className="font-serif text-4xl leading-none text-brass-500"
+          <div
+            aria-label="Guest testimonials"
+            aria-roledescription="carousel"
+            className="relative mx-auto max-w-5xl"
+          >
+            <div
+              aria-live="off"
+              className="grid grid-cols-3 gap-3 sm:gap-5"
+            >
+              {Array.from({ length: 3 }, (_, cardOffset) => {
+                const testimonialIndex =
+                  (activeTestimonial + cardOffset) % testimonials.length;
+                const testimonial = testimonials[testimonialIndex];
+
+                return (
+                  <figure
+                    key={testimonial.treatment}
+                    aria-label={`Guest note ${testimonialIndex + 1} of ${testimonials.length}`}
+                    className="flex min-h-64 min-w-0 flex-col overflow-hidden rounded-b-[1.35rem] border border-forest-900/10 bg-[#f5f0e7] p-3 shadow-[0_8px_24px_rgba(42,56,43,0.045)] transition-all duration-500 hover:-translate-y-1 hover:border-forest-900/25 hover:shadow-[0_20px_48px_rgba(42,56,43,0.11)] sm:min-h-72 sm:p-7"
                   >
-                    “
-                  </span>
-                  <span
-                    aria-label="Sample guest note"
-                    className="text-[9px] uppercase tracking-[0.16em] text-forest-800/40"
-                  >
-                    Guest note
-                  </span>
-                </div>
-                <blockquote className="mt-4 flex-1 font-serif text-[18px] leading-7 text-forest-950">
-                  {testimonial.quote}
-                </blockquote>
-                <figcaption className="mt-6 flex items-center gap-3 border-t border-forest-900/10 pt-4 text-[9px] font-semibold uppercase tracking-[0.15em] text-forest-800/60">
-                  <span aria-hidden="true" className="h-px w-6 bg-brass-500/70" />
-                  {testimonial.treatment}
-                </figcaption>
-              </figure>
-            ))}
+                    <div className="flex items-center justify-between">
+                      <span
+                        aria-hidden="true"
+                        className="font-serif text-4xl leading-none text-brass-500"
+                      >
+                        “
+                      </span>
+                      <span className="text-[8px] uppercase tracking-[0.1em] text-forest-800/50 sm:text-[9px] sm:tracking-[0.16em]">
+                        Guest note {testimonialIndex + 1} of {testimonials.length}
+                      </span>
+                    </div>
+                    <div
+                      aria-label={`${testimonial.rating} out of 5 stars`}
+                      className="mt-4 flex gap-1 text-brass-600"
+                    >
+                      {Array.from({ length: 5 }, (_, starIndex) => (
+                        <span
+                          key={starIndex}
+                          aria-hidden="true"
+                          className={
+                            starIndex < testimonial.rating
+                              ? "opacity-100"
+                              : "opacity-30"
+                          }
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    <blockquote className="mt-3 flex-1 font-serif text-sm leading-6 text-forest-950 sm:text-[20px] sm:leading-7">
+                      {testimonial.quote}
+                    </blockquote>
+                    <figcaption className="mt-5 flex items-center gap-2 border-t border-forest-900/10 pt-4 text-[8px] font-semibold uppercase tracking-[0.08em] text-forest-800/60 sm:gap-3 sm:text-[9px] sm:tracking-[0.15em]">
+                      <span
+                        aria-hidden="true"
+                        className="h-px w-6 bg-brass-500/70"
+                      />
+                      {testimonial.treatment}
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>}
 
-      <footer className="border-t border-white/10 bg-forest-950 px-5 py-8 text-ivory-50 sm:px-8 sm:py-10">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
+      <footer className="border-t border-white/10 bg-forest-950 px-5 py-10 text-ivory-50 sm:px-8 sm:py-12">
+        <div className="mx-auto grid max-w-7xl gap-9 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.7fr_1fr_1fr_1.2fr] lg:gap-10">
           <div>
             <a
-              href="#home"
+              href="#page-top"
               className="font-serif text-[19px] tracking-[0.14em] text-ivory-50 transition-colors hover:text-brass-200"
             >
               SOL <span className="text-brass-400">&amp;</span> STILL
             </a>
-            <p className="mt-2 text-[9px] uppercase tracking-[0.18em] text-ivory-100/55">
-              Thoughtful care, naturally
+            <p className="mt-3 max-w-xs text-xs leading-6 text-ivory-100/60">
+              Thoughtful care, naturally. A little space to slow down and
+              reconnect with yourself.
+            </p>
+            <p className="mt-4 text-[9px] font-semibold uppercase tracking-[0.18em] text-brass-200">
+              Accra, Ghana
             </p>
           </div>
-          <nav aria-label="Footer navigation" className="flex items-center gap-5">
-            <a
-              href="#treatments"
-              className="text-[9px] font-semibold uppercase tracking-[0.16em] text-ivory-100/70 transition-colors hover:text-brass-200"
-            >
-              Treatments
-            </a>
-            <span aria-hidden="true" className="h-4 w-px bg-white/20" />
-            <a
-              href="#about"
-              className="text-[9px] font-semibold uppercase tracking-[0.16em] text-ivory-100/70 transition-colors hover:text-brass-200"
-            >
-              About
-            </a>
+
+          <nav aria-label="Footer navigation">
+            <h2 className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brass-200">
+              Explore
+            </h2>
+            <ul className="mt-4 space-y-3">
+              <li>
+                <a
+                  href="#booking"
+                  className="text-xs text-ivory-100/70 transition-colors hover:text-brass-200"
+                >
+                  Book a treatment
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#page-top"
+                  className="text-xs text-ivory-100/70 transition-colors hover:text-brass-200"
+                >
+                  Back to top
+                </a>
+              </li>
+            </ul>
           </nav>
-          <p className="text-[9px] uppercase tracking-[0.16em] text-ivory-100/50">
-            Accra, Ghana <span className="mx-2 text-brass-400">·</span> ©{" "}
-            {new Date().getFullYear()} SOL &amp; STILL
-          </p>
+
+          <div>
+            <h2 className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brass-200">
+              Your visit
+            </h2>
+            <ul className="mt-4 space-y-3 text-xs leading-5 text-ivory-100/70">
+              <li>Choose a treatment and a time that suits you.</li>
+              <li>Appointments are available over the next 7 days.</li>
+              <li>All times are shown in Accra local time.</li>
+            </ul>
+          </div>
+
+          <div>
+            <h2 className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brass-200">
+              Booking notes
+            </h2>
+            <ul className="mt-4 space-y-3 text-xs leading-5 text-ivory-100/70">
+              <li>Your selected time is held for up to 5 minutes.</li>
+              <li>Online payment is not available yet.</li>
+            </ul>
+          </div>
+
+          <address className="not-italic">
+            <h2 className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brass-200">
+              Find &amp; contact us
+            </h2>
+            <ul className="mt-4 space-y-3 text-xs leading-5 text-ivory-100/70">
+              <li>Accra-Tessano, Accra</li>
+              <li>
+                <a
+                  href="tel:+2330028824444"
+                  className="transition-colors hover:text-brass-200"
+                >
+                  +233 002 882 4444
+                </a>
+              </li>
+              <li>
+                <a
+                  href="mailto:solstill@gh.com"
+                  className="transition-colors hover:text-brass-200"
+                >
+                  solstill@mail.outlook.com
+                </a>
+              </li>
+              <li>Monday–Saturday, 9:00 am–9:00 pm</li>
+            </ul>
+          </address>
+        </div>
+        <div className="mx-auto mt-9 flex max-w-7xl flex-col gap-3 border-t border-white/10 pt-5 text-[9px] uppercase tracking-[0.16em] text-ivory-100/45 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} SOL &amp; STILL. All rights reserved.</p>
+          <p>Thoughtful care, naturally</p>
         </div>
       </footer>
     </div>

@@ -421,5 +421,39 @@ describe("App", () => {
       }),
     ).toBeInTheDocument();
   });
-  
+
+  it("shows three rated guest testimonials and the spa contact details", async () => {
+    render(<App />);
+
+    expect(
+      await screen.findByText(
+        /from the first hello, everything felt calm and considered/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/the massage was exactly what i needed/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/a beautiful little pause in a busy week/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByLabelText(/out of 5 stars/)).toHaveLength(3);
+    expect(
+      screen.queryByRole("button", {
+        name: /previous guest testimonial|next guest testimonial|pause guest testimonial autoplay/i,
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(screen.getByRole("link", { name: "+233 002 882 4444" })).toHaveAttribute(
+      "href",
+      "tel:+2330028824444",
+    );
+    expect(screen.getByRole("link", { name: "solstill@gh.com" })).toHaveAttribute(
+      "href",
+      "mailto:solstill@gh.com",
+    );
+    expect(screen.getByText("Accra-Tessano, Accra")).toBeInTheDocument();
+    expect(
+      screen.getByText("Monday–Saturday, 9:00 am–9:00 pm"),
+    ).toBeInTheDocument();
+  });
 });

@@ -1149,7 +1149,11 @@ describe("App booking lifecycle", () => {
       }),
     ).not.toBeInTheDocument();
 
-    expect(screen.getByText(/payment is not collected in this booking flow yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /your appointment is confirmed when you submit your details/i,
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /swedish massage/i }),
     ).not.toBeInTheDocument();

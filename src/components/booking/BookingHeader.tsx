@@ -67,7 +67,7 @@ export function BookingHeader({
           className="flex h-19 items-center justify-between border-b border-forest-900/10"
         >
           <a
-            href="#home"
+            href="#page-top"
             aria-label="Sol & Still home"
             className="group flex items-center gap-3"
           >
