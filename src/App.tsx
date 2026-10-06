@@ -776,26 +776,35 @@ export default function App() {
 
       {bookingPage === "treatments" && <section
         aria-labelledby="testimonials-heading"
-        className="border-y border-forest-900/10 bg-white/35 px-5 py-14 sm:px-8 sm:py-20"
+        className="relative overflow-hidden border-y border-forest-900/10 bg-[#f8f5ee] px-5 py-16 sm:px-8 sm:py-22"
       >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 -top-32 size-96 rounded-full border border-forest-900/[0.06]"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-10 -top-18 size-64 rounded-full border border-forest-900/[0.06]"
+        />
         <div className="mx-auto max-w-7xl">
-          <div className="mx-auto mb-8 max-w-xl text-center sm:mb-10">
-            <p className="section-kicker">A moment to exhale</p>
+          <div className="relative mx-auto mb-10 max-w-xl text-center sm:mb-12">
+            <p className="inline-flex items-center gap-3 rounded-full border border-brass-500/35 bg-ivory-50/60 px-4 py-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-forest-800/70">
+              <span aria-hidden="true" className="text-brass-600">✳</span>
+              A moment to exhale
+              <span aria-hidden="true" className="text-brass-600">✳</span>
+            </p>
             <h2
               id="testimonials-heading"
-              className="mt-2 font-serif text-[30px] font-normal tracking-[-0.035em] text-forest-950 sm:text-[38px]"
+              className="mt-4 font-serif text-[34px] font-normal leading-tight tracking-[-0.04em] text-forest-950 sm:text-[44px]"
             >
               A softer kind of care.
             </h2>
-            <p className="mt-3 text-sm leading-6 text-forest-800/65">
+            <p className="mt-3 text-[15px] leading-7 text-forest-800/70">
               Thoughtful touches make all the difference.
-            </p>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-forest-800/45">
-              Sample guest notes
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="relative grid gap-5 md:grid-cols-3">
             {[
               {
                 quote:
@@ -815,18 +824,27 @@ export default function App() {
             ].map((testimonial) => (
               <figure
                 key={testimonial.treatment}
-                className="flex min-h-52 flex-col rounded-2xl border border-forest-900/10 bg-ivory-50/80 p-6 shadow-[0_6px_20px_rgba(42,56,43,0.035)] sm:p-7"
+                className="group flex min-h-56 flex-col rounded-[1.35rem] border border-forest-900/10 bg-ivory-50/85 p-6 shadow-[0_10px_28px_rgba(42,56,43,0.045)] transition-all duration-300 hover:-translate-y-1 hover:border-brass-500/35 hover:shadow-[0_18px_36px_rgba(42,56,43,0.09)] sm:p-7"
               >
-                <span
-                  aria-hidden="true"
-                  className="font-serif text-3xl leading-none text-brass-500"
-                >
-                  “
-                </span>
-                <blockquote className="mt-3 flex-1 font-serif text-[17px] leading-7 text-forest-950">
+                <div className="flex items-center justify-between">
+                  <span
+                    aria-hidden="true"
+                    className="font-serif text-4xl leading-none text-brass-500"
+                  >
+                    “
+                  </span>
+                  <span
+                    aria-label="Sample guest note"
+                    className="text-[9px] uppercase tracking-[0.16em] text-forest-800/40"
+                  >
+                    Guest note
+                  </span>
+                </div>
+                <blockquote className="mt-4 flex-1 font-serif text-[18px] leading-7 text-forest-950">
                   {testimonial.quote}
                 </blockquote>
-                <figcaption className="mt-5 border-t border-forest-900/10 pt-4 text-[9px] font-semibold uppercase tracking-[0.15em] text-forest-800/55">
+                <figcaption className="mt-6 flex items-center gap-3 border-t border-forest-900/10 pt-4 text-[9px] font-semibold uppercase tracking-[0.15em] text-forest-800/60">
+                  <span aria-hidden="true" className="h-px w-6 bg-brass-500/70" />
                   {testimonial.treatment}
                 </figcaption>
               </figure>
@@ -835,16 +853,39 @@ export default function App() {
         </div>
       </section>}
 
-      <footer className="border-t border-forest-900/10 px-5 py-6 text-center sm:px-8">
-        <a
-          href="#home"
-          className="font-serif text-[15px] tracking-[0.12em] text-forest-900"
-        >
-          SOL <span className="text-brass-600">&</span> STILL
-        </a>
-        <p className="mt-1 text-[9px] uppercase tracking-[0.17em] text-forest-800/45">
-          Thoughtful care, naturally · Accra, Ghana
-        </p>
+      <footer className="border-t border-white/10 bg-forest-950 px-5 py-8 text-ivory-50 sm:px-8 sm:py-10">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
+          <div>
+            <a
+              href="#home"
+              className="font-serif text-[19px] tracking-[0.14em] text-ivory-50 transition-colors hover:text-brass-200"
+            >
+              SOL <span className="text-brass-400">&amp;</span> STILL
+            </a>
+            <p className="mt-2 text-[9px] uppercase tracking-[0.18em] text-ivory-100/55">
+              Thoughtful care, naturally
+            </p>
+          </div>
+          <nav aria-label="Footer navigation" className="flex items-center gap-5">
+            <a
+              href="#treatments"
+              className="text-[9px] font-semibold uppercase tracking-[0.16em] text-ivory-100/70 transition-colors hover:text-brass-200"
+            >
+              Treatments
+            </a>
+            <span aria-hidden="true" className="h-4 w-px bg-white/20" />
+            <a
+              href="#about"
+              className="text-[9px] font-semibold uppercase tracking-[0.16em] text-ivory-100/70 transition-colors hover:text-brass-200"
+            >
+              About
+            </a>
+          </nav>
+          <p className="text-[9px] uppercase tracking-[0.16em] text-ivory-100/50">
+            Accra, Ghana <span className="mx-2 text-brass-400">·</span> ©{" "}
+            {new Date().getFullYear()} SOL &amp; STILL
+          </p>
+        </div>
       </footer>
     </div>
   );
