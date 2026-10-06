@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -61,6 +61,7 @@ vi.mock("./lib/bookingApi", async (importOriginal) => {
 describe("App booking lifecycle", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    window.history.replaceState(null, "", import.meta.env.BASE_URL);
 
     getAvailability.mockReset();
     getAvailability.mockResolvedValue([
@@ -188,8 +189,11 @@ describe("App booking lifecycle", () => {
       expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
 
       expect(
-        screen.getByRole("button", { name: /deep tissue massage/i }),
-      ).toHaveAttribute("aria-pressed", "true");
+        screen.getByRole("heading", { name: "Deep Tissue Massage" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /swedish massage/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("refreshes availability after a generic hold failure", async () => {
@@ -256,8 +260,11 @@ describe("App booking lifecycle", () => {
       expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
 
       expect(
-        screen.getByRole("button", { name: /deep tissue massage/i }),
-      ).toHaveAttribute("aria-pressed", "true");
+        screen.getByRole("heading", { name: "Deep Tissue Massage" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /swedish massage/i }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -889,11 +896,12 @@ describe("App booking lifecycle", () => {
 
     render(<App />);
 
-    const service = await screen.findByRole("button", {
-      name: /deep tissue massage/i,
-    });
-
-    expect(service).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await screen.findByRole("heading", { name: "Deep Tissue Massage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /swedish massage/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a holding state while a slot is being held", async () => {
@@ -1013,6 +1021,11 @@ describe("App booking lifecycle", () => {
   });
   it("shows the service and appointment details after booking is confirmed", async () => {
     const user = userEvent.setup();
+    createHold.mockResolvedValueOnce({
+      bookingId: "booking-default",
+      confirmationToken: "token-default",
+      heldUntil: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
 
     render(<App />);
 
@@ -1049,18 +1062,37 @@ describe("App booking lifecycle", () => {
       }),
     ).toBeInTheDocument();
 
+    const progressSteps = within(
+      screen.getByRole("list", { name: "Booking progress" }),
+    ).getAllByRole("listitem");
+    expect(progressSteps[2]).toHaveTextContent("✓");
+    expect(progressSteps[2]).not.toHaveAttribute("aria-current");
+
     expect(screen.getByText("Deep Tissue Massage")).toBeInTheDocument();
 
     expect(screen.getByText(/October 5, 2026/)).toBeInTheDocument();
 
     expect(screen.getByText(/9:00 AM/)).toBeInTheDocument();
+    expect(screen.getByText("60 minutes")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Confirmed")).toHaveLength(4);
 
     expect(
       screen.getByText("Booking reference: booking-default"),
     ).toBeInTheDocument();
-  });
 
-  it("opens appointment selection as a separate step and lets guests change rituals", async () => {
+    await user.click(
+      screen.getByRole("button", { name: /return to homepage/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Come back to yourself." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Booking confirmed" }),
+    ).not.toBeInTheDocument();
+  }, 15_000);
+
+  it("shows only the chosen treatment and lets guests return to change it", async () => {
     const user = userEvent.setup();
 
     render(<App />);
@@ -1069,6 +1101,9 @@ describe("App booking lifecycle", () => {
       await screen.findByRole("button", {
         name: /deep tissue massage/i,
       }),
+    );
+    expect(window.location.pathname).toBe(
+      `${import.meta.env.BASE_URL}treatments/deep-tissue-massage`,
     );
 
     expect(
@@ -1080,10 +1115,14 @@ describe("App booking lifecycle", () => {
       }),
     ).not.toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: /deep tissue massage/i }),
-    );
+    expect(screen.getByText(/payment is not collected in this booking flow yet/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /swedish massage/i }),
+    ).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Change treatment" }));
+
+    expect(window.location.pathname).toBe(import.meta.env.BASE_URL);
     expect(
       await screen.findByRole("heading", { name: "Choose your ritual" }),
     ).toBeInTheDocument();

@@ -69,6 +69,7 @@ function mockServicesRequest() {
 describe("App", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    window.history.replaceState(null, "", import.meta.env.BASE_URL);
 
     from.mockReset();
     mockServicesRequest();
@@ -84,6 +85,11 @@ describe("App", () => {
         therapistId: "therapist-1",
         startTime: "10:00",
         endTime: "11:00",
+      },
+      {
+        therapistId: "therapist-1",
+        startTime: "20:00",
+        endTime: "21:00",
       },
     ]);
 
@@ -156,7 +162,16 @@ describe("App", () => {
 
       await user.click(service);
 
-      expect(service).toHaveAttribute("aria-pressed", "true");
+      expect(window.location.pathname).toBe(
+        `${import.meta.env.BASE_URL}treatments/deep-tissue-massage`,
+      );
+      expect(
+        await screen.findByRole("heading", { name: "Choose a time" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Deep Tissue Massage")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /swedish massage/i }),
+      ).not.toBeInTheDocument();
     });
 
     it("shows available appointment slots after selecting a service", async () => {
@@ -175,6 +190,48 @@ describe("App", () => {
       ).toBeInTheDocument();
 
       expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
+      expect(screen.getByText("9:00 AM")).toBeInTheDocument();
+      expect(screen.getByText("8:00 PM")).toBeInTheDocument();
+    });
+
+    it("loads and holds a slot for a selected date within the next week", async () => {
+      const user = userEvent.setup();
+      const nextDay = new Date();
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      const nextDayISO = nextDay.toISOString().slice(0, 10);
+      const nextDayLabel = nextDay.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+
+      render(<App />);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: /deep tissue massage/i,
+        }),
+      );
+
+      await user.click(
+        screen.getByRole("button", {
+          name: nextDayLabel,
+        }),
+      );
+
+      expect(getAvailability).toHaveBeenLastCalledWith("service-1", nextDayISO);
+
+      await user.click(await screen.findByRole("button", { name: "09:00" }));
+
+      expect(
+        await screen.findByRole("heading", { name: "Appointment held" }),
+      ).toBeInTheDocument();
+      expect(createHold).toHaveBeenCalledWith({
+        serviceId: "service-1",
+        therapistId: "therapist-1",
+        startTime: `${nextDayISO}T09:00:00Z`,
+      });
     });
 
     it("shows an error instead of leaving availability loading when times fail to load", async () => {

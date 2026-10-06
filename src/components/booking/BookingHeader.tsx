@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 type BookingHeaderProps = {
   activeStep: 1 | 2 | 3;
+  isConfirmed?: boolean;
   showHero?: boolean;
   onBackToTreatments?: () => void;
 };
@@ -27,6 +28,7 @@ const spaImages = [
 
 export function BookingHeader({
   activeStep,
+  isConfirmed = false,
   showHero = true,
   onBackToTreatments,
 }: BookingHeaderProps) {
@@ -246,8 +248,8 @@ export function BookingHeader({
         >
           {steps.map((step, index) => {
             const number = index + 1;
-            const isComplete = number < activeStep;
-            const isCurrent = number === activeStep;
+            const isComplete = number < activeStep || (isConfirmed && number === activeStep);
+            const isCurrent = number === activeStep && !isConfirmed;
 
             return (
               <li

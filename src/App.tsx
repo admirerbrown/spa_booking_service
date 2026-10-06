@@ -23,6 +23,39 @@ function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
+function treatmentSlug(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function appBasePath(): string {
+  return new URL(import.meta.env.BASE_URL, window.location.origin).pathname;
+}
+
+function treatmentPath(name: string): string {
+  return `${appBasePath()}treatments/${treatmentSlug(name)}`;
+}
+
+function selectedTreatmentSlug(): string | null {
+  const basePath = appBasePath();
+  const path = window.location.pathname.startsWith(basePath)
+    ? window.location.pathname.slice(basePath.length)
+    : "";
+  const match = path.match(/^treatments\/([^/]+)\/?$/);
+
+  return match ? match[1] : null;
+}
+
+function addDays(date: string, days: number): string {
+  const result = new Date(`${date}T00:00:00.000Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return formatDate(result);
+}
+
 function formatRemaining(remainingMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -34,7 +67,12 @@ function formatRemaining(remainingMs: number): string {
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
 
-  const bookingDate = useMemo(() => formatDate(new Date()), []);
+  const todayDate = useMemo(() => formatDate(new Date()), []);
+  const bookingDates = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDays(todayDate, index)),
+    [todayDate],
+  );
+  const [bookingDate, setBookingDate] = useState(todayDate);
 
   const [services, setServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -72,6 +110,35 @@ export default function App() {
     document.getElementById(targetId)?.focus();
     document.body.scrollIntoView?.({ block: "start" });
   }, [bookingPage]);
+
+  useEffect(() => {
+    if (services.length === 0) return;
+
+    function restoreRoute() {
+      const slug = selectedTreatmentSlug();
+      const service = services.find(
+        (candidate) => treatmentSlug(candidate.name) === slug,
+      );
+
+      if (service) {
+        setSelectedServiceId(service.id);
+        setBookingPage("availability");
+        return;
+      }
+
+      if (bookingFlow.status !== "selecting-slot") return;
+
+      setSelectedServiceId(null);
+      setSelectedSlot(null);
+      setBookingPage("treatments");
+    }
+
+    if (selectedTreatmentSlug()) {
+      restoreRoute();
+    }
+    window.addEventListener("popstate", restoreRoute);
+    return () => window.removeEventListener("popstate", restoreRoute);
+  }, [bookingFlow.status, services]);
 
   useEffect(() => {
     let isActive = true;
@@ -165,6 +232,7 @@ export default function App() {
       }
 
       setSelectedServiceId(parsed.serviceId);
+      setBookingDate(parsed.slot.startTime.slice(0, 10));
       setBookingPage("availability");
 
       dispatch({
@@ -393,12 +461,18 @@ export default function App() {
     });
   }
 
+  function returnToTreatments() {
+    window.history.pushState(null, "", appBasePath());
+    setBookingPage("treatments");
+  }
+
   return (
     <div className="min-h-screen bg-ivory-100 text-forest-950">
       <BookingHeader
         activeStep={activeStep}
+        isConfirmed={isConfirmed}
         showHero={bookingPage === "treatments"}
-        onBackToTreatments={() => setBookingPage("treatments")}
+        onBackToTreatments={returnToTreatments}
       />
 
       {bookingPage === "treatments" && (
@@ -479,13 +553,21 @@ export default function App() {
         aria-label={
           bookingPage === "availability" ? "Choose an appointment time" : undefined
         }
-        className={`mx-auto grid max-w-7xl gap-8 px-5 pb-16 sm:px-8 sm:pb-24 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14 ${
+        className={`mx-auto grid max-w-7xl gap-8 px-5 pb-16 sm:px-8 sm:pb-24 ${
+          isConfirmed
+            ? "lg:grid-cols-1"
+            : "lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14"
+        } ${
           bookingPage === "treatments"
             ? "bg-[#f8f5ee] pt-12 sm:pt-16"
             : "pt-8 sm:pt-10"
         }`}
       >
-        <div className="min-w-0 space-y-9 sm:space-y-11">
+        <div
+          className={`min-w-0 space-y-9 sm:space-y-11 ${
+            isConfirmed ? "mx-auto w-full max-w-3xl" : ""
+          }`}
+        >
           {error && (
             <p
               role="alert"
@@ -517,20 +599,26 @@ export default function App() {
             </p>
           )}
 
-          {!isConfirmed && (bookingPage === "treatments" || selectedServiceId) && (
+          {!isConfirmed && bookingPage === "treatments" && (
             <ServicePicker
               services={services}
               selectedServiceId={selectedServiceId}
               isLoading={servicesLoading}
               onSelect={(serviceId) => {
                 setError(null);
-
-                if (bookingPage === "availability" && selectedServiceId === serviceId) {
-                  setSelectedSlot(null);
-                  setBookingPage("treatments");
+                const service = services.find(
+                  (candidate) => candidate.id === serviceId,
+                );
+                if (!service) {
+                  setError("That treatment could not be found. Please try again.");
                   return;
                 }
 
+                window.history.pushState(
+                  null,
+                  "",
+                  treatmentPath(service.name),
+                );
                 setSelectedServiceId(serviceId);
                 setSelectedSlot(null);
                 setBookingPage("availability");
@@ -541,37 +629,68 @@ export default function App() {
           {!isConfirmed && bookingPage === "availability" && (
             <section
               aria-labelledby="selected-ritual-heading"
-              className="booking-section rounded-[1.2rem] border border-forest-900/10 bg-white/70 p-5 shadow-[0_8px_25px_rgba(42,56,43,0.035)] sm:p-7"
+              className="booking-section overflow-hidden rounded-[1.35rem] border border-forest-900/10 bg-[#fffdf8] shadow-[0_12px_34px_rgba(42,56,43,0.07)]"
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="section-kicker">Your ritual</p>
+              <div className="flex flex-wrap items-start justify-between gap-5 bg-forest-950 px-5 py-6 text-ivory-50 sm:px-7">
+                <div className="max-w-2xl">
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-brass-300">
+                    Your selected treatment
+                  </p>
                   <h2
                     id="selected-ritual-heading"
-                    className="mt-1 font-serif text-[25px] leading-tight text-forest-950"
+                    className="mt-2 font-serif text-[28px] leading-tight sm:text-[32px]"
                   >
                     {selectedService?.name ?? "Your selected treatment"}
                   </h2>
-                  <p className="mt-2 text-xs leading-5 text-forest-800/60">
+                  <p className="mt-3 text-sm leading-6 text-ivory-100/70">
                     {selectedService?.description}
                   </p>
                 </div>
                 <button
                   type="button"
-                  aria-label="Change selected ritual"
-                  aria-pressed="true"
-                  onClick={() => setBookingPage("treatments")}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-forest-900/15 px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-forest-800 transition-colors hover:border-forest-900/40 hover:bg-ivory-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2"
+                  aria-label="Change treatment"
+                  onClick={returnToTreatments}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/25 px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ivory-50 transition-colors hover:border-brass-300 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-300 focus-visible:ring-offset-2 focus-visible:ring-offset-forest-950"
                 >
-                  <span>{selectedService?.name ?? "Selected ritual"}</span>
-                  <span className="text-forest-800/55">Change</span>
+                  <span>Change treatment</span>
                   <span aria-hidden="true">↗</span>
                 </button>
               </div>
               {selectedService && (
-                <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-forest-900/10 pt-4 text-[10px] font-medium uppercase tracking-widest text-forest-800/60">
-                  <span>{selectedService.duration_minutes} minutes</span>
-                  <span>GHS {Number(selectedService.price).toFixed(2)}</span>
+                <div className="grid gap-px bg-forest-900/10 sm:grid-cols-2">
+                  <div className="bg-[#fffdf8] p-5 sm:p-6">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-brass-700">
+                      Booking
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-forest-800/75">
+                      Choose an available time. It will be held for up to five
+                      minutes while you enter your details; this temporary hold
+                      is not a confirmed reservation.
+                    </p>
+                  </div>
+                  <div className="bg-[#fffdf8] p-5 sm:p-6">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-brass-700">
+                      Payment &amp; reservation
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-forest-800/75">
+                      Your appointment is reserved only after payment is
+                      completed. Payment is not collected in this booking flow
+                      yet.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {selectedService && (
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-forest-900/10 bg-ivory-100/65 px-5 py-4 sm:px-7">
+                  <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-forest-800/50">
+                    Treatment details
+                  </span>
+                  <span className="text-xs font-medium text-forest-800/75">
+                    {selectedService.duration_minutes} minutes
+                  </span>
+                  <span className="font-serif text-base text-forest-950">
+                    GHS {Number(selectedService.price).toFixed(2)}
+                  </span>
                 </div>
               )}
             </section>
@@ -580,10 +699,21 @@ export default function App() {
           {!isConfirmed && bookingPage === "availability" && (
             <AvailabilityPicker
               slots={availableSlots}
+              dates={bookingDates}
+              selectedDate={bookingDate}
               selectedSlot={selectedSlot}
               hasSelectedService={Boolean(selectedServiceId)}
               isLoading={availabilityLoading}
-              isCreatingHold={bookingFlow.status === "creating-hold"}
+              isCreatingHold={
+                bookingFlow.status === "creating-hold" ||
+                isBookingDetailsVisible ||
+                isReconciling
+              }
+              onDateChange={(date) => {
+                setError(null);
+                setSelectedSlot(null);
+                setBookingDate(date);
+              }}
               onSelect={(slot) => {
                 setError(null);
                 setSelectedSlot(slot.startTime);
@@ -620,6 +750,17 @@ export default function App() {
                 services.find((service) => service.id === selectedServiceId)
                   ?.name
               }
+              durationMinutes={selectedService?.duration_minutes}
+              onReturnHome={() => {
+                dispatch({ type: "START_NEW_BOOKING" });
+                setSelectedServiceId(null);
+                setSelectedSlot(null);
+                setCustomerName("");
+                setCustomerContact("");
+                setError(null);
+                window.history.pushState(null, "", appBasePath());
+                setBookingPage("treatments");
+              }}
             />
           )}
         </div>

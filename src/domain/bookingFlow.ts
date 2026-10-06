@@ -51,6 +51,7 @@ export type BookingFlowState =
     };
 
 export type BookingFlowAction =
+  | { type: "START_NEW_BOOKING" }
   | { type: "SELECT_SLOT"; slot: BookingSlot }
   | {
       type: "RESTORE_HOLD";
@@ -91,6 +92,10 @@ export function bookingFlowReducer(
   state: BookingFlowState,
   action: BookingFlowAction,
 ): BookingFlowState {
+  if (action.type === "START_NEW_BOOKING") {
+    return initialBookingFlowState;
+  }
+
   switch (state.status) {
     case "selecting-slot":
       if (action.type === "SELECT_SLOT") {

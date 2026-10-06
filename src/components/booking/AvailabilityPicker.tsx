@@ -2,28 +2,40 @@ import type { AvailableSlot } from "../../types/booking";
 
 type AvailabilityPickerProps = {
   slots: AvailableSlot[];
+  dates: string[];
+  selectedDate: string;
   selectedSlot: string | null;
   hasSelectedService: boolean;
   isLoading: boolean;
   isCreatingHold: boolean;
+  onDateChange: (date: string) => void;
   onSelect: (slot: AvailableSlot) => void;
 };
 
-function formattedDate(date: string) {
+function formattedDate(date: string, options: Intl.DateTimeFormatOptions = {}) {
   return new Date(`${date}T00:00:00.000Z`).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
+    ...options,
     timeZone: "UTC",
   });
 }
 
+function formattedTime(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+
+  return `${displayHours}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
 export function AvailabilityPicker({
   slots,
+  dates,
+  selectedDate,
   selectedSlot,
   hasSelectedService,
   isLoading,
   isCreatingHold,
+  onDateChange,
   onSelect,
 }: AvailabilityPickerProps) {
   if (!hasSelectedService) {
@@ -69,8 +81,49 @@ export function AvailabilityPicker({
           </h2>
         </div>
         <span className="rounded-full border border-forest-900/10 bg-white/70 px-3.5 py-2 text-[10px] font-medium uppercase tracking-[0.1em] text-forest-800/75">
-          {formattedDate(new Date().toISOString().slice(0, 10))}
+          {formattedDate(selectedDate, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
         </span>
+      </div>
+
+      <div
+        role="group"
+        aria-label="Choose an appointment date within the next 7 days"
+        className="mb-5 grid grid-cols-4 gap-2 sm:grid-cols-7"
+      >
+        {dates.map((date) => {
+          const isSelected = date === selectedDate;
+
+          return (
+            <button
+              key={date}
+              type="button"
+              aria-pressed={isSelected}
+              aria-label={formattedDate(date, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+              disabled={isCreatingHold}
+              onClick={() => onDateChange(date)}
+              className={`flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                isSelected
+                  ? "border-forest-950 bg-forest-950 text-ivory-50"
+                  : "border-forest-900/10 bg-white/60 text-forest-800 hover:border-forest-900/30 hover:bg-white"
+              }`}
+            >
+              <span className="text-[9px] font-semibold uppercase tracking-[0.1em] opacity-70">
+                {formattedDate(date, { weekday: "short" })}
+              </span>
+              <span className="mt-1 font-serif text-lg leading-none">
+                {formattedDate(date, { day: "numeric" })}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {isLoading && (
@@ -90,8 +143,8 @@ export function AvailabilityPicker({
           aria-label="No appointments available"
           className="rounded-xl border border-forest-900/10 bg-white/65 px-5 py-5 text-sm leading-6 text-forest-800/70"
         >
-          There are no appointments available today. Please check back soon for
-          a little time to yourself.
+          There are no appointments available on this date. Please try another
+          day this week.
         </p>
       )}
 
@@ -114,7 +167,7 @@ export function AvailabilityPicker({
                     : "border-forest-900/15 bg-white/80 text-forest-950 hover:border-forest-900/50 hover:bg-white"
                 }`}
               >
-                {slot.startTime}
+                {formattedTime(slot.startTime)}
               </button>
             );
           })}

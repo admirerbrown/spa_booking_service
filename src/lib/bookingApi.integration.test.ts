@@ -48,7 +48,7 @@ beforeAll(async () => {
   therapistId = therapist.rows[0].id;
   await pool.query(
     "insert into public.therapist_working_hours (therapist_id, weekday, starts_at, ends_at) select $1, weekday, $2::time, $3::time from generate_series(0, 6) weekday",
-    [therapistId, "09:00", "17:00"],
+    [therapistId, "09:00", "21:00"],
   );
   // All-day working hours therapist so cancellation/reschedule cutoff tests aren't
   // sensitive to what time of day the test suite happens to run.
@@ -122,8 +122,9 @@ describe("booking integrity in PostgreSQL", () => {
     ).rejects.toThrow("HOLD_EXPIRED");
   });
 
-  it("rejects a booking outside the therapist working hours", async () => {
-    await expect(createHold("2030-01-11T17:00:00Z")).rejects.toThrow(
+  it("allows bookings through 9 PM and rejects later starts", async () => {
+    await expect(createHold("2030-01-11T20:00:00Z")).resolves.toBeDefined();
+    await expect(createHold("2030-01-11T21:00:00Z")).rejects.toThrow(
       "OUTSIDE_WORKING_HOURS",
     );
   });

@@ -56,7 +56,7 @@ select
   '20000000-0000-4000-8000-000000000001',
   weekday::smallint,
   '09:00'::time,
-  '17:00'::time
+  '21:00'::time
 from generate_series(0, 6) as weekdays(weekday)
 on conflict (therapist_id, weekday, starts_at, ends_at) do nothing;
 

@@ -37,6 +37,20 @@ describe('getAvailableSlots', () => {
     })).toEqual([]);
   });
 
+  it("offers slots through the latest start time that fits before 9 PM closing", () => {
+    const slots = getAvailableSlots({
+      day,
+      workingHours: [{ start: "09:00", end: "21:00" }],
+      durationMinutes: 60,
+      bookings: [],
+      now: new Date("2026-10-01T08:00:00.000Z"),
+    });
+
+    expect(slots[0]).toBe("09:00");
+    expect(slots.at(-1)).toBe("20:00");
+    expect(slots).not.toContain("21:00");
+  });
+
   it('removes every slot that overlaps an active confirmed booking', () => {
     expect(getAvailableSlots({
       day,
