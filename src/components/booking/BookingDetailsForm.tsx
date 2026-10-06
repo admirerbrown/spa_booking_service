@@ -4,6 +4,8 @@ type BookingDetailsFormProps = {
   isConfirming: boolean;
   customerName: string;
   customerContact: string;
+  nameError?: string;
+  contactError?: string;
   remainingLabel: string | null;
   onNameChange: (value: string) => void;
   onContactChange: (value: string) => void;
@@ -14,6 +16,8 @@ export function BookingDetailsForm({
   isConfirming,
   customerName,
   customerContact,
+  nameError,
+  contactError,
   remainingLabel,
   onNameChange,
   onContactChange,
@@ -89,8 +93,15 @@ export function BookingDetailsForm({
             onChange={(event) => onNameChange(event.target.value)}
             disabled={isConfirming}
             placeholder="How may we welcome you?"
-            className="form-field"
+            aria-invalid={Boolean(nameError)}
+            aria-describedby={nameError ? "customer-name-error" : undefined}
+            className={`form-field ${nameError ? "border-red-500/60" : ""}`}
           />
+          {nameError && (
+            <p id="customer-name-error" role="alert" className="mt-1.5 text-[11px] text-[#7d3c2b]">
+              {nameError}
+            </p>
+          )}
         </div>
 
         <div>
@@ -109,8 +120,15 @@ export function BookingDetailsForm({
             onChange={(event) => onContactChange(event.target.value)}
             disabled={isConfirming}
             placeholder="Your phone number or email"
-            className="form-field"
+            aria-invalid={Boolean(contactError)}
+            aria-describedby={contactError ? "customer-contact-error" : undefined}
+            className={`form-field ${contactError ? "border-red-500/60" : ""}`}
           />
+          {contactError && (
+            <p id="customer-contact-error" role="alert" className="mt-1.5 text-[11px] text-[#7d3c2b]">
+              {contactError}
+            </p>
+          )}
         </div>
 
         <button

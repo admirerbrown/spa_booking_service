@@ -574,6 +574,40 @@ describe("App booking lifecycle", () => {
         }),
       ).toBeInTheDocument();
     });
+
+    it("requires both a name and contact before confirming a hold", async () => {
+      const user = userEvent.setup();
+
+      createHold.mockResolvedValue({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+        heldUntil: "2026-10-05T09:05:00.000Z",
+      });
+
+      render(<App />);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: /deep tissue massage/i,
+        }),
+      );
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: "09:00",
+        }),
+      );
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: "Confirm booking",
+        }),
+      );
+
+      expect(await screen.findByText("Name is required.")).toBeInTheDocument();
+      expect(screen.getByText("Contact is required.")).toBeInTheDocument();
+      expect(confirmHold).not.toHaveBeenCalled();
+    });
   });
 
   describe("confirmation", () => {

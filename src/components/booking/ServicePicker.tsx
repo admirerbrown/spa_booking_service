@@ -1,4 +1,8 @@
 import type { Service } from "../../types/booking";
+import aromaticMassageImage from "../../assets/aromatic-massage.jpg";
+import swedishMassageImage from "../../assets/swedishmassage.jpg";
+import warmStoneImage from "../../assets/warmstone.jpg";
+import deepTissueMassageImage from "../../assets/woman-receiving-deep-tissue-massage.jpg";
 
 type ServicePickerProps = {
   services: Service[];
@@ -7,12 +11,12 @@ type ServicePickerProps = {
   onSelect: (serviceId: string) => void;
 };
 
-const serviceImages = [
-  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1000&h=560&q=85",
-  "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=1000&h=560&q=85",
-  "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1000&h=560&q=85",
-  "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1000&h=560&q=85",
-];
+const serviceImages: Record<string, string> = {
+  "restorative swedish massage": swedishMassageImage,
+  "deep tissue massage": deepTissueMassageImage,
+  "aromatic reset": aromaticMassageImage,
+  "warm stone ritual": warmStoneImage,
+};
 
 export function ServicePicker({
   services,
@@ -88,7 +92,7 @@ export function ServicePicker({
                 className="service-art relative block h-40 overflow-hidden bg-forest-900 sm:h-44"
               >
                 <img
-                  src={serviceImages[index % serviceImages.length]}
+                  src={serviceImages[service.name.toLocaleLowerCase()] ?? swedishMassageImage}
                   alt={`${service.name} spa treatment`}
                   loading="lazy"
                   decoding="async"

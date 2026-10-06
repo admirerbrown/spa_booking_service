@@ -2,6 +2,7 @@ type BookingAsideProps = {
   hasSelectedService: boolean;
   hasSelectedTime: boolean;
   isHeld: boolean;
+  alignWithTreatmentCards?: boolean;
 };
 
 const comforts = [
@@ -14,9 +15,14 @@ export function BookingAside({
   hasSelectedService,
   hasSelectedTime,
   isHeld,
+  alignWithTreatmentCards = false,
 }: BookingAsideProps) {
   return (
-    <aside className="space-y-4 lg:sticky lg:top-6">
+    <aside
+      className={`space-y-4 lg:sticky lg:top-6 ${
+        alignWithTreatmentCards ? "lg:mt-[20.25rem]" : ""
+      }`}
+    >
       <section className="overflow-hidden rounded-[1.35rem] border border-forest-900/10 bg-[#fffdf8] shadow-[0_14px_38px_rgba(42,56,43,0.08)]">
         <div className="flex items-start justify-between gap-3 bg-forest-950 px-5 py-5 text-ivory-50">
           <div>

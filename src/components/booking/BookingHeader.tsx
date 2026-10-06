@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import carouselImage1 from "../../assets/carousel-img1.jpg";
+import carouselImage2 from "../../assets/carousel-img2.jpg";
+import carouselImage3 from "../../assets/carousel-img3.jpg";
 
 type BookingHeaderProps = {
   activeStep: 1 | 2 | 3;
@@ -10,17 +13,17 @@ type BookingHeaderProps = {
 const steps = ["Treatment", "Your time", "Your details"];
 const spaImages = [
   {
-    src: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1400&h=1000&q=85",
+    src: carouselImage1,
     alt: "A softly lit spa retreat with warm natural stone",
     imageClass: "",
   },
   {
-    src: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=1400&h=1000&q=85",
+    src: carouselImage2,
     alt: "A tranquil spa treatment room prepared for a guest",
     imageClass: "scale-[1.1]",
   },
   {
-    src: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=1400&h=1000&q=85",
+    src: carouselImage3,
     alt: "A relaxing massage in a calm spa setting",
     imageClass: "scale-[1.14]",
   },

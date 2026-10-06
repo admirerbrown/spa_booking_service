@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
+import aboutImage from "./assets/about-image.jpeg";
 import {
   bookingFlowReducer,
   initialBookingFlowState,
@@ -15,6 +16,7 @@ import { BookingConfirmation } from "./components/booking/BookingConfirmation";
 import { BookingDetailsForm } from "./components/booking/BookingDetailsForm";
 import { BookingHeader } from "./components/booking/BookingHeader";
 import { ServicePicker } from "./components/booking/ServicePicker";
+import { validateCustomerDetails } from "./domain/booking";
 import type { AvailableSlot, Service } from "./types/booking";
 
 import "./app.css";
@@ -91,6 +93,10 @@ export default function App() {
 
   const [customerName, setCustomerName] = useState("");
   const [customerContact, setCustomerContact] = useState("");
+  const [customerDetailsErrors, setCustomerDetailsErrors] = useState<{
+    name?: string;
+    contact?: string;
+  }>({});
 
   const [bookingFlow, dispatch] = useReducer(
     bookingFlowReducer,
@@ -454,6 +460,18 @@ export default function App() {
       return;
     }
 
+    const validation = validateCustomerDetails({
+      name: customerName,
+      contact: customerContact,
+    });
+
+    if (!validation.valid) {
+      setCustomerDetailsErrors(validation.errors);
+      return;
+    }
+
+    setCustomerDetailsErrors({});
+
     dispatch({
       type: "SUBMIT_DETAILS",
       name: customerName,
@@ -505,7 +523,7 @@ export default function App() {
 
             <div className="relative mt-4 overflow-hidden rounded-[1.2rem] border border-white/10 shadow-[0_16px_34px_rgba(0,0,0,0.15)]">
               <img
-                src="https://static.wixstatic.com/media/52b3f5_165fee3db0aa468bbcf6af64cfc754ce~mv2_d_2000_1335_s_2.jpg/v1/fill/w_980,h_307,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/52b3f5_165fee3db0aa468bbcf6af64cfc754ce~mv2_d_2000_1335_s_2.jpg"
+                src={aboutImage}
                 alt="Customer receiving a massage in a calm spa setting"
                 className="h-40 w-full object-cover sm:h-44"
               />
@@ -736,8 +754,22 @@ export default function App() {
               customerName={customerName}
               customerContact={customerContact}
               remainingLabel={remainingLabel}
-              onNameChange={setCustomerName}
-              onContactChange={setCustomerContact}
+              nameError={customerDetailsErrors.name}
+              contactError={customerDetailsErrors.contact}
+              onNameChange={(value) => {
+                setCustomerName(value);
+                setCustomerDetailsErrors((current) => ({
+                  ...current,
+                  name: undefined,
+                }));
+              }}
+              onContactChange={(value) => {
+                setCustomerContact(value);
+                setCustomerDetailsErrors((current) => ({
+                  ...current,
+                  contact: undefined,
+                }));
+              }}
               onSubmit={handleSubmitDetails}
             />
           )}
@@ -757,6 +789,7 @@ export default function App() {
                 setSelectedSlot(null);
                 setCustomerName("");
                 setCustomerContact("");
+                setCustomerDetailsErrors({});
                 setError(null);
                 window.history.pushState(null, "", appBasePath());
                 setBookingPage("treatments");
@@ -770,6 +803,7 @@ export default function App() {
             hasSelectedService={Boolean(selectedServiceId)}
             hasSelectedTime={Boolean(selectedSlot)}
             isHeld={isHeld || isConfirming}
+            alignWithTreatmentCards={bookingPage === "treatments"}
           />
         )}
       </main>
