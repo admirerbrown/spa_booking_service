@@ -176,6 +176,41 @@ describe("booking API", () => {
     });
   });
 
+  it("releases a hold through the token-protected database RPC", async () => {
+    rpc.mockResolvedValueOnce({
+      data: [{ booking_id: "hold-1", status: "cancelled" }],
+      error: null,
+    });
+
+    await expect(
+      api.releaseHold({
+        bookingId: "hold-1",
+        confirmationToken: "token-1",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(rpc).toHaveBeenCalledWith("release_booking_hold", {
+      p_booking_id: "hold-1",
+      p_confirmation_token: "token-1",
+    });
+  });
+
+  it("surfaces a missing hold when releasing fails", async () => {
+    rpc.mockResolvedValueOnce({
+      data: null,
+      error: { message: "HOLD_NOT_FOUND" },
+    });
+
+    await expect(
+      api.releaseHold({
+        bookingId: "hold-1",
+        confirmationToken: "token-1",
+      }),
+    ).rejects.toMatchObject({
+      code: "HOLD_NOT_FOUND",
+    });
+  });
+
   it("gets booking status through the protected status RPC", async () => {
     rpc.mockResolvedValueOnce({
       data: [

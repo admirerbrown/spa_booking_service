@@ -183,6 +183,17 @@ export function createBookingApi(client: RpcClient) {
       };
     },
 
+    async releaseHold(input: GetBookingStatusInput): Promise<void> {
+      const { data, error } = await client.rpc("release_booking_hold", {
+        p_booking_id: input.bookingId,
+        p_confirmation_token: input.confirmationToken,
+      });
+
+      if (error || !data?.[0]) {
+        throw bookingError(error?.message ?? "EMPTY_RESPONSE");
+      }
+    },
+
     async getBookingStatus(
       input: GetBookingStatusInput,
     ): Promise<BookingStatus> {

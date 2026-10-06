@@ -138,6 +138,7 @@ export default function App() {
 
   const [holdTick, setHoldTick] = useState(0);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [isReleasingHold, setIsReleasingHold] = useState(false);
 
   useEffect(() => {
     if (
@@ -528,6 +529,41 @@ export default function App() {
     });
   }
 
+  async function handleReleaseHold() {
+    if (bookingFlow.status !== "held" || isReleasingHold) {
+      return;
+    }
+
+    setIsReleasingHold(true);
+    setError(null);
+
+    try {
+      await bookingApi.releaseHold({
+        bookingId: bookingFlow.bookingId,
+        confirmationToken: bookingFlow.confirmationToken,
+      });
+
+      sessionStorage.removeItem("spa_booking_active_hold");
+      setSelectedSlot(null);
+      setCustomerName("");
+      setCustomerContact("");
+      setCustomerDetailsErrors({});
+      setAvailabilityRefresh((current) => current + 1);
+      dispatch({ type: "START_NEW_BOOKING" });
+    } catch (cause: unknown) {
+      const bookingError =
+        cause instanceof BookingError
+          ? cause
+          : new BookingError(
+              "UNKNOWN",
+              "We could not release your reservation. Please try again.",
+            );
+      setError(bookingError.message);
+    } finally {
+      setIsReleasingHold(false);
+    }
+  }
+
   function returnToTreatments() {
     window.history.pushState(null, "", appBasePath());
     setBookingPage("treatments");
@@ -800,6 +836,7 @@ export default function App() {
           {isBookingDetailsVisible && (
             <BookingDetailsForm
               isConfirming={isConfirming}
+              isReleasingHold={isReleasingHold}
               customerName={customerName}
               customerContact={customerContact}
               remainingLabel={remainingLabel}
@@ -820,6 +857,7 @@ export default function App() {
                 }));
               }}
               onSubmit={handleSubmitDetails}
+              onCancel={() => void handleReleaseHold()}
             />
           )}
 
@@ -851,7 +889,7 @@ export default function App() {
           <BookingAside
             hasSelectedService={Boolean(selectedServiceId)}
             hasSelectedTime={Boolean(selectedSlot)}
-            isHeld={isHeld || isConfirming}
+            isHeld={isHeld}
             alignWithTreatmentCards={bookingPage === "treatments"}
           />
         )}

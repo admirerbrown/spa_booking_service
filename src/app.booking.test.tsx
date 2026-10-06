@@ -5,12 +5,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { BookingError } from "./lib/bookingApi";
 
-const { getAvailability, createHold, confirmHold, getBookingStatus } =
-  vi.hoisted(() => ({
+const {
+  getAvailability,
+  createHold,
+  confirmHold,
+  getBookingStatus,
+  releaseHold,
+} = vi.hoisted(() => ({
     getAvailability: vi.fn(),
     createHold: vi.fn(),
     confirmHold: vi.fn(),
     getBookingStatus: vi.fn(),
+    releaseHold: vi.fn(),
   }));
 
 vi.mock("./lib/supabase", () => ({
@@ -54,6 +60,7 @@ vi.mock("./lib/bookingApi", async (importOriginal) => {
       createHold,
       confirmHold,
       getBookingStatus,
+      releaseHold,
     }),
   };
 });
@@ -93,6 +100,8 @@ describe("App booking lifecycle", () => {
     });
 
     getBookingStatus.mockReset();
+    releaseHold.mockReset();
+    releaseHold.mockResolvedValue(undefined);
   });
 
   describe("hold failures", () => {
@@ -305,6 +314,39 @@ describe("App booking lifecycle", () => {
       } finally {
         vi.restoreAllMocks();
       }
+    });
+
+    it("releases the active reservation and returns to slot selection", async () => {
+      const user = userEvent.setup();
+      createHold.mockResolvedValue({
+        bookingId: "booking-1",
+        confirmationToken: "token-1",
+        heldUntil: "2026-10-05T09:05:00Z",
+      });
+
+      render(<App />);
+
+      await user.click(
+        await screen.findByRole("button", { name: /deep tissue massage/i }),
+      );
+      await user.click(await screen.findByRole("button", { name: "09:00" }));
+      await user.click(
+        await screen.findByRole("button", { name: "Cancel" }),
+      );
+
+      await waitFor(() => {
+        expect(releaseHold).toHaveBeenCalledWith({
+          bookingId: "booking-1",
+          confirmationToken: "token-1",
+        });
+      });
+      expect(
+        await screen.findByRole("button", { name: "09:00" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Cancel" }),
+      ).not.toBeInTheDocument();
+      expect(sessionStorage.getItem("spa_booking_active_hold")).toBeNull();
     });
 
     it("returns to slot selection when the hold expires", async () => {
@@ -570,7 +612,7 @@ describe("App booking lifecycle", () => {
 
       expect(
         screen.getByRole("button", {
-          name: "Confirm booking",
+          name: "Confirm",
         }),
       ).toBeInTheDocument();
     });
@@ -600,7 +642,7 @@ describe("App booking lifecycle", () => {
 
       await user.click(
         await screen.findByRole("button", {
-          name: "Confirm booking",
+          name: "Confirm",
         }),
       );
 
@@ -646,7 +688,7 @@ describe("App booking lifecycle", () => {
 
       await user.click(
         screen.getByRole("button", {
-          name: "Confirm booking",
+          name: "Confirm",
         }),
       );
 
@@ -702,7 +744,7 @@ describe("App booking lifecycle", () => {
 
       await user.click(
         screen.getByRole("button", {
-          name: "Confirm booking",
+          name: "Confirm",
         }),
       );
 
@@ -769,7 +811,7 @@ describe("App booking lifecycle", () => {
 
       await user.click(
         screen.getByRole("button", {
-          name: "Confirm booking",
+          name: "Confirm",
         }),
       );
 
@@ -837,7 +879,7 @@ describe("App booking lifecycle", () => {
 
       await user.click(
         screen.getByRole("button", {
-          name: "Confirm booking",
+          name: "Confirm",
         }),
       );
 
@@ -888,7 +930,7 @@ describe("App booking lifecycle", () => {
 
       await user.click(
         screen.getByRole("button", {
-          name: /confirm booking/i,
+          name: "Confirm",
         }),
       );
 
@@ -1027,7 +1069,7 @@ describe("App booking lifecycle", () => {
     await user.type(screen.getByLabelText("Contact"), "0240000000");
 
     const confirmButton = screen.getByRole("button", {
-      name: "Confirm booking",
+      name: "Confirm",
     });
 
     await user.click(confirmButton);
@@ -1086,7 +1128,7 @@ describe("App booking lifecycle", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Confirm booking",
+        name: "Confirm",
       }),
     );
 

@@ -97,6 +97,31 @@ describe("booking integrity in PostgreSQL", () => {
     );
   });
 
+  it("releases a hold so its time can be booked again", async () => {
+    const held = await createHold("2030-01-08T12:00:00Z");
+    const result = await pool.query(
+      "select * from public.release_booking_hold($1, $2)",
+      [held.rows[0].booking_id, held.rows[0].confirmation_token],
+    );
+
+    expect(result.rows[0].status).toBe("cancelled");
+    await expect(createHold("2030-01-08T12:00:00Z")).resolves.toBeDefined();
+  });
+
+  it("does not release a hold with an invalid confirmation token", async () => {
+    const held = await createHold("2030-01-08T15:00:00Z");
+
+    await expect(
+      pool.query("select * from public.release_booking_hold($1, $2)", [
+        held.rows[0].booking_id,
+        randomUUID(),
+      ]),
+    ).rejects.toThrow("HOLD_NOT_FOUND");
+    await expect(createHold("2030-01-08T15:00:00Z")).rejects.toThrow(
+      "SLOT_UNAVAILABLE",
+    );
+  });
+
   it("does not let an expired hold block a new request", async () => {
     const held = await createHold("2030-01-09T09:00:00Z");
     await pool.query(

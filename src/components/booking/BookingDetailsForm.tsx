@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 
 type BookingDetailsFormProps = {
   isConfirming: boolean;
+  isReleasingHold: boolean;
   customerName: string;
   customerContact: string;
   nameError?: string;
@@ -10,10 +11,12 @@ type BookingDetailsFormProps = {
   onNameChange: (value: string) => void;
   onContactChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onCancel: () => void;
 };
 
 export function BookingDetailsForm({
   isConfirming,
+  isReleasingHold,
   customerName,
   customerContact,
   nameError,
@@ -22,6 +25,7 @@ export function BookingDetailsForm({
   onNameChange,
   onContactChange,
   onSubmit,
+  onCancel,
 }: BookingDetailsFormProps) {
   return (
     <section
@@ -131,19 +135,29 @@ export function BookingDetailsForm({
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={isConfirming}
-          className="group flex w-full items-center justify-center gap-3 rounded-full bg-forest-950 px-5 py-3.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ivory-50 shadow-[0_8px_20px_rgba(30,48,40,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-forest-800 hover:shadow-[0_12px_25px_rgba(30,48,40,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-65"
-        >
-          Confirm booking
-          <span
-            aria-hidden="true"
-            className="text-base transition-transform group-hover:translate-x-1"
+        <div className="mx-auto grid w-full max-w-sm grid-cols-2 gap-3">
+          <button
+            type="submit"
+            disabled={isConfirming || isReleasingHold}
+            className="group flex min-w-0 items-center justify-center gap-1.5 rounded-full bg-forest-950 px-2 py-2.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-ivory-50 shadow-[0_6px_16px_rgba(30,48,40,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-forest-800 hover:shadow-[0_10px_20px_rgba(30,48,40,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-65 sm:px-4 sm:tracking-[0.12em]"
           >
-            →
-          </span>
-        </button>
+            Confirm
+            <span
+              aria-hidden="true"
+              className="text-sm transition-transform group-hover:translate-x-1"
+            >
+              →
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isConfirming || isReleasingHold}
+            className="flex min-w-0 items-center justify-center rounded-full border border-forest-900/20 bg-white/50 px-2 py-2.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-forest-900 transition-colors hover:border-forest-900 hover:bg-ivory-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-65 sm:px-4 sm:tracking-[0.12em]"
+          >
+            {isReleasingHold ? "Cancelling…" : "Cancel"}
+          </button>
+        </div>
         <p className="text-center text-[10px] leading-5 text-forest-800/50">
           Your details are treated with the same care as your time.
         </p>
