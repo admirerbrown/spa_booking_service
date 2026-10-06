@@ -176,7 +176,7 @@ describe("App booking lifecycle", () => {
       expect(getAvailability).toHaveBeenCalledTimes(2);
       expect(getAvailability).toHaveBeenLastCalledWith(
         "service-1",
-        "2026-10-05",
+        "2026-10-06",
       );
 
       await waitFor(() => {
@@ -242,7 +242,7 @@ describe("App booking lifecycle", () => {
       expect(getAvailability).toHaveBeenCalledTimes(2);
       expect(getAvailability).toHaveBeenLastCalledWith(
         "service-1",
-        "2026-10-05",
+        "2026-10-06",
       );
 
       await waitFor(() => {
@@ -383,7 +383,7 @@ describe("App booking lifecycle", () => {
       expect(createHold).toHaveBeenCalledWith({
         serviceId: "service-1",
         therapistId: "therapist-1",
-        startTime: "2026-10-05T09:00:00Z",
+        startTime: "2026-10-06T09:00:00Z",
       });
 
       expect(sessionStorage.getItem("spa_booking_active_hold")).toBe(
@@ -394,8 +394,8 @@ describe("App booking lifecycle", () => {
           heldUntil: "2026-10-05T09:05:00.000Z",
           slot: {
             therapistId: "therapist-1",
-            startTime: "2026-10-05T09:00:00Z",
-            endTime: "2026-10-05T10:00:00Z",
+            startTime: "2026-10-06T09:00:00Z",
+            endTime: "2026-10-06T10:00:00Z",
           },
         }),
       );
@@ -890,5 +890,169 @@ describe("App booking lifecycle", () => {
     });
 
     expect(service).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("shows a holding state while a slot is being held", async () => {
+    const user = userEvent.setup();
+
+    let resolveHold!: (value: {
+      bookingId: string;
+      confirmationToken: string;
+      heldUntil: string;
+    }) => void;
+
+    createHold.mockReturnValue(
+      new Promise((resolve) => {
+        resolveHold = resolve;
+      }),
+    );
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    const slot = await screen.findByRole("button", {
+      name: "09:00",
+    });
+
+    await user.click(slot);
+
+    expect(
+      screen.getByRole("status", {
+        name: /holding appointment/i,
+      }),
+    ).toBeInTheDocument();
+
+    expect(slot).toBeDisabled();
+
+    resolveHold({
+      bookingId: "booking-1",
+      confirmationToken: "token-1",
+      heldUntil: "2026-10-05T09:05:00Z",
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Appointment held",
+      }),
+    ).toBeInTheDocument();
+  });
+  it("shows a confirming state while the booking is being confirmed", async () => {
+    const user = userEvent.setup();
+
+    let resolveConfirmation!: (value: {
+      bookingId: string;
+      startTime: string;
+      endTime: string;
+      status: "confirmed";
+    }) => void;
+
+    confirmHold.mockReturnValue(
+      new Promise((resolve) => {
+        resolveConfirmation = resolve;
+      }),
+    );
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "09:00",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Appointment held",
+      }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Name"), "Samuel Brown");
+    await user.type(screen.getByLabelText("Contact"), "0240000000");
+
+    const confirmButton = screen.getByRole("button", {
+      name: "Confirm booking",
+    });
+
+    await user.click(confirmButton);
+
+    expect(
+      screen.getByRole("status", {
+        name: /confirming booking/i,
+      }),
+    ).toBeInTheDocument();
+
+    expect(confirmButton).toBeDisabled();
+
+    resolveConfirmation({
+      bookingId: "booking-1",
+      startTime: "2026-10-05T09:00:00Z",
+      endTime: "2026-10-05T10:00:00Z",
+      status: "confirmed",
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Booking confirmed",
+      }),
+    ).toBeInTheDocument();
+  });
+  it("shows the service and appointment details after booking is confirmed", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "09:00",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Appointment held",
+      }),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Name"), "Samuel Brown");
+    await user.type(screen.getByLabelText("Contact"), "0240000000");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Confirm booking",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Booking confirmed",
+      }),
+    ).toBeInTheDocument();
+
+    expect(screen.getByText("Deep Tissue Massage")).toBeInTheDocument();
+
+    expect(screen.getByText(/October 5, 2026/)).toBeInTheDocument();
+
+    expect(screen.getByText(/9:00 AM/)).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Booking reference: booking-default"),
+    ).toBeInTheDocument();
   });
 });

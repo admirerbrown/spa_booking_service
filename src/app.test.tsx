@@ -6,39 +6,18 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 
-const { getAvailability, createHold, confirmHold, getBookingStatus } =
+const { getAvailability, createHold, confirmHold, getBookingStatus, from } =
   vi.hoisted(() => ({
     getAvailability: vi.fn(),
     createHold: vi.fn(),
     confirmHold: vi.fn(),
     getBookingStatus: vi.fn(),
+    from: vi.fn(),
   }));
 
 vi.mock("./lib/supabase", () => ({
   supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        order: vi.fn().mockResolvedValue({
-          data: [
-            {
-              id: "service-1",
-              name: "Deep Tissue Massage",
-              description: "A therapeutic full-body massage.",
-              duration_minutes: 60,
-              price: 250,
-            },
-            {
-              id: "service-2",
-              name: "Swedish Massage",
-              description: "A relaxing full-body massage.",
-              duration_minutes: 60,
-              price: 200,
-            },
-          ],
-          error: null,
-        }),
-      })),
-    })),
+    from,
   },
 }));
 
@@ -59,9 +38,40 @@ vi.mock("./lib/bookingApi", async (importOriginal) => {
   };
 });
 
+const services = [
+  {
+    id: "service-1",
+    name: "Deep Tissue Massage",
+    description: "A therapeutic full-body massage.",
+    duration_minutes: 60,
+    price: 250,
+  },
+  {
+    id: "service-2",
+    name: "Swedish Massage",
+    description: "A relaxing full-body massage.",
+    duration_minutes: 60,
+    price: 200,
+  },
+];
+
+function mockServicesRequest() {
+  from.mockReturnValue({
+    select: vi.fn(() => ({
+      order: vi.fn().mockResolvedValue({
+        data: services,
+        error: null,
+      }),
+    })),
+  });
+}
+
 describe("App", () => {
   beforeEach(() => {
     sessionStorage.clear();
+
+    from.mockReset();
+    mockServicesRequest();
 
     getAvailability.mockReset();
     getAvailability.mockResolvedValue([
@@ -100,6 +110,41 @@ describe("App", () => {
   });
 
   describe("service and availability flow", () => {
+    it("shows a loading state while services are being loaded", async () => {
+      let resolveServices!: (value: {
+        data: typeof services;
+        error: null;
+      }) => void;
+
+      from.mockReturnValue({
+        select: vi.fn(() => ({
+          order: vi.fn(
+            () =>
+              new Promise((resolve) => {
+                resolveServices = resolve;
+              }),
+          ),
+        })),
+      });
+
+      render(<App />);
+
+      expect(
+        screen.getByRole("status", { name: /loading services/i }),
+      ).toBeInTheDocument();
+
+      resolveServices({
+        data: services,
+        error: null,
+      });
+
+      expect(
+        await screen.findByRole("button", {
+          name: /deep tissue massage/i,
+        }),
+      ).toBeInTheDocument();
+    });
+
     it("selects a service when the customer clicks it", async () => {
       const user = userEvent.setup();
 
@@ -178,7 +223,7 @@ describe("App", () => {
       expect(createHold).toHaveBeenCalledWith({
         serviceId: "service-1",
         therapistId: "therapist-1",
-        startTime: "2026-10-05T09:00:00Z",
+        startTime: "2026-10-06T09:00:00Z",
       });
     });
 
@@ -242,4 +287,62 @@ describe("App", () => {
       });
     });
   });
+
+  it("shows a loading state while availability is being loaded", async () => {
+    let resolveAvailability!: (
+      value: {
+        therapistId: string;
+        startTime: string;
+        endTime: string;
+      }[],
+    ) => void;
+
+    vi.mocked(getAvailability).mockReturnValue(
+      new Promise((resolve) => {
+        resolveAvailability = resolve;
+      }),
+    );
+
+    render(<App />);
+
+  await userEvent.click(
+    await screen.findByRole("button", {
+      name: /deep tissue massage/i,
+    }),
+  );
+
+    expect(
+      screen.getByRole("status", { name: /loading availability/i }),
+    ).toBeInTheDocument();
+
+    resolveAvailability([
+      {
+        therapistId: "therapist-1",
+        startTime: "09:00",
+        endTime: "10:00",
+      },
+    ]);
+
+    expect(
+      await screen.findByRole("button", { name: "09:00" }),
+    ).toBeInTheDocument();
+  });
+  it("shows a message when no appointment times are available", async () => {
+    vi.mocked(getAvailability).mockResolvedValue([]);
+
+    render(<App />);
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    expect(
+      await screen.findByRole("status", {
+        name: /no appointments available/i,
+      }),
+    ).toBeInTheDocument();
+  });
+  
 });

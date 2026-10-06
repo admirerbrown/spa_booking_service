@@ -36,6 +36,22 @@ function formatRemaining(remainingMs: number): string {
 
   return `${minutes}:${seconds.toString().padStart(2, "0")} remaining`;
 }
+function formatAppointmentDate(startTime: string): string {
+  return new Date(startTime).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatAppointmentTime(startTime: string): string {
+  return new Date(startTime).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
 
 export default function App() {
   const bookingApi = useMemo(() => createBookingApi(supabase), []);
@@ -43,11 +59,13 @@ export default function App() {
   const bookingDate = useMemo(() => formatDate(new Date()), []);
 
   const [services, setServices] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null,
   );
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [availabilityRefresh, setAvailabilityRefresh] = useState(0);
 
@@ -72,6 +90,8 @@ export default function App() {
         } else {
           setServices(data ?? []);
         }
+
+        setServicesLoading(false);
       });
   }, []);
 
@@ -81,8 +101,11 @@ export default function App() {
       return;
     }
 
+    setAvailabilityLoading(true);
+
     getAvailability(selectedServiceId, bookingDate).then((slots) => {
       setAvailableSlots(slots);
+      setAvailabilityLoading(false);
     });
   }, [selectedServiceId, bookingDate, availabilityRefresh]);
 
@@ -333,6 +356,12 @@ export default function App() {
       <section aria-labelledby="services-heading">
         <h2 id="services-heading">Choose a service</h2>
 
+        {servicesLoading && (
+          <p role="status" aria-label="Loading services">
+            Loading services...
+          </p>
+        )}
+
         <div className="service-grid">
           {services.map((service) => (
             <button
@@ -358,6 +387,26 @@ export default function App() {
         </div>
       </section>
 
+      {availabilityLoading && (
+        <p role="status" aria-label="Loading availability">
+          Loading availability...
+        </p>
+      )}
+
+      {!availabilityLoading &&
+        selectedServiceId &&
+        availableSlots.length === 0 && (
+          <p role="status" aria-label="No appointments available">
+            No appointments available.
+          </p>
+        )}
+
+      {bookingFlow.status === "creating-hold" && (
+        <p role="status" aria-label="Holding appointment">
+          Holding appointment...
+        </p>
+      )}
+
       {availableSlots.length > 0 && (
         <section aria-labelledby="availability-heading">
           <h2 id="availability-heading">Choose a time</h2>
@@ -368,6 +417,7 @@ export default function App() {
                 key={slot.startTime}
                 type="button"
                 aria-pressed={selectedSlot === slot.startTime}
+                disabled={bookingFlow.status === "creating-hold"}
                 onClick={() => {
                   setError(null);
                   setSelectedSlot(slot.startTime);
@@ -389,15 +439,28 @@ export default function App() {
         </section>
       )}
 
-      {bookingFlow.status === "held" && (
+      {(bookingFlow.status === "held" ||
+        bookingFlow.status === "confirming") && (
         <section aria-labelledby="hold-heading">
           <h2 id="hold-heading">Appointment held</h2>
 
-          {remainingLabel && <p role="timer">{remainingLabel}</p>}
+          {bookingFlow.status === "held" && remainingLabel && (
+            <p role="timer">{remainingLabel}</p>
+          )}
+
+          {bookingFlow.status === "confirming" && (
+            <p role="status" aria-label="Confirming booking">
+              Confirming booking...
+            </p>
+          )}
 
           <form
             onSubmit={(event) => {
               event.preventDefault();
+
+              if (bookingFlow.status !== "held") {
+                return;
+              }
 
               dispatch({
                 type: "SUBMIT_DETAILS",
@@ -415,6 +478,7 @@ export default function App() {
                 type="text"
                 value={customerName}
                 onChange={(event) => setCustomerName(event.target.value)}
+                disabled={bookingFlow.status === "confirming"}
               />
             </div>
 
@@ -427,10 +491,16 @@ export default function App() {
                 type="text"
                 value={customerContact}
                 onChange={(event) => setCustomerContact(event.target.value)}
+                disabled={bookingFlow.status === "confirming"}
               />
             </div>
 
-            <button type="submit">Confirm booking</button>
+            <button
+              type="submit"
+              disabled={bookingFlow.status === "confirming"}
+            >
+              Confirm booking
+            </button>
           </form>
         </section>
       )}
@@ -440,6 +510,15 @@ export default function App() {
           <h2 id="confirmation-heading">Booking confirmed</h2>
 
           <p>Your appointment is confirmed.</p>
+
+          <p>
+            Service:{" "}
+            {services.find((service) => service.id === selectedServiceId)?.name}
+          </p>
+
+          <p>Date: {formatAppointmentDate(bookingFlow.startTime)}</p>
+
+          <p>Time: {formatAppointmentTime(bookingFlow.startTime)}</p>
 
           <p>Booking reference: {bookingFlow.bookingId}</p>
         </section>
