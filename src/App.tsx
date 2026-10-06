@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
+import type { FormEvent } from "react";
 
 import {
   bookingFlowReducer,
@@ -8,22 +9,15 @@ import {
 import { getAvailability } from "./lib/availabilityApi";
 import { BookingError, createBookingApi } from "./lib/bookingApi";
 import { supabase } from "./lib/supabase";
+import { AvailabilityPicker } from "./components/booking/AvailabilityPicker";
+import { BookingAside } from "./components/booking/BookingAside";
+import { BookingConfirmation } from "./components/booking/BookingConfirmation";
+import { BookingDetailsForm } from "./components/booking/BookingDetailsForm";
+import { BookingHeader } from "./components/booking/BookingHeader";
+import { ServicePicker } from "./components/booking/ServicePicker";
+import type { AvailableSlot, Service } from "./types/booking";
 
 import "./app.css";
-
-type Service = {
-  id: string;
-  name: string;
-  description: string;
-  duration_minutes: number;
-  price: number;
-};
-
-type AvailableSlot = {
-  therapistId: string;
-  startTime: string;
-  endTime: string;
-};
 
 function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -35,22 +29,6 @@ function formatRemaining(remainingMs: number): string {
   const seconds = totalSeconds % 60;
 
   return `${minutes}:${seconds.toString().padStart(2, "0")} remaining`;
-}
-function formatAppointmentDate(startTime: string): string {
-  return new Date(startTime).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function formatAppointmentTime(startTime: string): string {
-  return new Date(startTime).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
 }
 
 export default function App() {
@@ -337,192 +315,152 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingFlow, holdTick]);
 
+  const isConfirmed = bookingFlow.status === "confirmed";
+  const isHeld = bookingFlow.status === "held";
+  const isConfirming = bookingFlow.status === "confirming";
+  const isReconciling = bookingFlow.status === "reconciling";
+  const isBookingDetailsVisible = isHeld || isConfirming;
+  const activeStep: 1 | 2 | 3 =
+    isConfirmed || isBookingDetailsVisible || isReconciling
+      ? 3
+      : selectedServiceId
+        ? 2
+        : 1;
+
+  function handleSubmitDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (bookingFlow.status !== "held") {
+      return;
+    }
+
+    dispatch({
+      type: "SUBMIT_DETAILS",
+      name: customerName,
+      contact: customerContact,
+    });
+  }
+
   return (
-    <main className="page-shell">
-      <header>
-        <p className="eyebrow">THERAPIST BOOKING</p>
-        <h1>Make time for yourself.</h1>
-        <p className="lede">
-          Choose a treatment, therapist, and time that works for you.
-        </p>
-      </header>
+    <div className="min-h-screen bg-ivory-100 text-forest-950">
+      <BookingHeader activeStep={activeStep} />
 
-      {error && (
-        <p role="alert" className="notice">
-          {error}
-        </p>
-      )}
-
-      <section aria-labelledby="services-heading">
-        <h2 id="services-heading">Choose a service</h2>
-
-        {servicesLoading && (
-          <p role="status" aria-label="Loading services">
-            Loading services...
-          </p>
-        )}
-
-        <div className="service-grid">
-          {services.map((service) => (
-            <button
-              type="button"
-              className="service-card"
-              key={service.id}
-              aria-pressed={selectedServiceId === service.id}
-              onClick={() => {
-                setError(null);
-                setSelectedServiceId(service.id);
-                setSelectedSlot(null);
-              }}
+      <main
+        id="booking"
+        className="mx-auto grid max-w-7xl gap-8 px-5 pb-16 pt-2 sm:px-8 sm:pb-24 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14"
+      >
+        <div className="min-w-0 space-y-9 sm:space-y-11">
+          {error && (
+            <p
+              role="alert"
+              className="animate-[rise-in_350ms_ease-out] rounded-xl border border-[#b66a50]/20 bg-[#fbefea] px-5 py-4 text-sm leading-6 text-[#7d3c2b]"
             >
-              <h3>{service.name}</h3>
-              <p>{service.description}</p>
-
-              <footer>
-                <span>{service.duration_minutes} min</span>
-                <strong>GHS {Number(service.price).toFixed(2)}</strong>
-              </footer>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {availabilityLoading && (
-        <p role="status" aria-label="Loading availability">
-          Loading availability...
-        </p>
-      )}
-
-      {!availabilityLoading &&
-        selectedServiceId &&
-        availableSlots.length === 0 && (
-          <p role="status" aria-label="No appointments available">
-            No appointments available.
-          </p>
-        )}
-
-      {bookingFlow.status === "creating-hold" && (
-        <p role="status" aria-label="Holding appointment">
-          Holding appointment...
-        </p>
-      )}
-
-      {availableSlots.length > 0 && (
-        <section aria-labelledby="availability-heading">
-          <h2 id="availability-heading">Choose a time</h2>
-
-          <div>
-            {availableSlots.map((slot) => (
-              <button
-                key={slot.startTime}
-                type="button"
-                aria-pressed={selectedSlot === slot.startTime}
-                disabled={bookingFlow.status === "creating-hold"}
-                onClick={() => {
-                  setError(null);
-                  setSelectedSlot(slot.startTime);
-
-                  dispatch({
-                    type: "SELECT_SLOT",
-                    slot: {
-                      therapistId: slot.therapistId,
-                      startTime: `${bookingDate}T${slot.startTime}:00Z`,
-                      endTime: `${bookingDate}T${slot.endTime}:00Z`,
-                    },
-                  });
-                }}
-              >
-                {slot.startTime}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {(bookingFlow.status === "held" ||
-        bookingFlow.status === "confirming") && (
-        <section aria-labelledby="hold-heading">
-          <h2 id="hold-heading">Appointment held</h2>
-
-          {bookingFlow.status === "held" && remainingLabel && (
-            <p role="timer">{remainingLabel}</p>
-          )}
-
-          {bookingFlow.status === "confirming" && (
-            <p role="status" aria-label="Confirming booking">
-              Confirming booking...
+              {error}
             </p>
           )}
 
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-
-              if (bookingFlow.status !== "held") {
-                return;
-              }
-
-              dispatch({
-                type: "SUBMIT_DETAILS",
-                name: customerName,
-                contact: customerContact,
-              });
-            }}
-          >
-            <div>
-              <label htmlFor="customer-name">Name</label>
-
-              <input
-                id="customer-name"
-                name="name"
-                type="text"
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-                disabled={bookingFlow.status === "confirming"}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="customer-contact">Contact</label>
-
-              <input
-                id="customer-contact"
-                name="contact"
-                type="text"
-                value={customerContact}
-                onChange={(event) => setCustomerContact(event.target.value)}
-                disabled={bookingFlow.status === "confirming"}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={bookingFlow.status === "confirming"}
+          {bookingFlow.status === "creating-hold" && (
+            <p
+              role="status"
+              aria-label="Holding appointment"
+              className="flex items-center gap-3 rounded-xl bg-white/75 px-5 py-4 text-sm text-forest-800/75 shadow-sm"
             >
-              Confirm booking
-            </button>
-          </form>
-        </section>
-      )}
+              <span className="loading-orb" aria-hidden="true" />
+              Holding appointment…
+            </p>
+          )}
 
-      {bookingFlow.status === "confirmed" && (
-        <section aria-labelledby="confirmation-heading">
-          <h2 id="confirmation-heading">Booking confirmed</h2>
+          {isReconciling && (
+            <p
+              role="status"
+              aria-label="Restoring booking"
+              className="flex items-center gap-3 rounded-xl bg-white/75 px-5 py-4 text-sm text-forest-800/75 shadow-sm"
+            >
+              <span className="loading-orb" aria-hidden="true" />
+              Gently restoring your reservation…
+            </p>
+          )}
 
-          <p>Your appointment is confirmed.</p>
+          {!isConfirmed && (
+            <ServicePicker
+              services={services}
+              selectedServiceId={selectedServiceId}
+              isLoading={servicesLoading}
+              onSelect={(serviceId) => {
+                setError(null);
+                setSelectedServiceId(serviceId);
+                setSelectedSlot(null);
+              }}
+            />
+          )}
 
-          <p>
-            Service:{" "}
-            {services.find((service) => service.id === selectedServiceId)?.name}
-          </p>
+          {!isConfirmed && (
+            <AvailabilityPicker
+              slots={availableSlots}
+              selectedSlot={selectedSlot}
+              hasSelectedService={Boolean(selectedServiceId)}
+              isLoading={availabilityLoading}
+              isCreatingHold={bookingFlow.status === "creating-hold"}
+              onSelect={(slot) => {
+                setError(null);
+                setSelectedSlot(slot.startTime);
 
-          <p>Date: {formatAppointmentDate(bookingFlow.startTime)}</p>
+                dispatch({
+                  type: "SELECT_SLOT",
+                  slot: {
+                    therapistId: slot.therapistId,
+                    startTime: `${bookingDate}T${slot.startTime}:00Z`,
+                    endTime: `${bookingDate}T${slot.endTime}:00Z`,
+                  },
+                });
+              }}
+            />
+          )}
 
-          <p>Time: {formatAppointmentTime(bookingFlow.startTime)}</p>
+          {isBookingDetailsVisible && (
+            <BookingDetailsForm
+              isConfirming={isConfirming}
+              customerName={customerName}
+              customerContact={customerContact}
+              remainingLabel={remainingLabel}
+              onNameChange={setCustomerName}
+              onContactChange={setCustomerContact}
+              onSubmit={handleSubmitDetails}
+            />
+          )}
 
-          <p>Booking reference: {bookingFlow.bookingId}</p>
-        </section>
-      )}
-    </main>
+          {isConfirmed && (
+            <BookingConfirmation
+              bookingId={bookingFlow.bookingId}
+              startTime={bookingFlow.startTime}
+              serviceName={
+                services.find((service) => service.id === selectedServiceId)
+                  ?.name
+              }
+            />
+          )}
+        </div>
+
+        {!isConfirmed && (
+          <BookingAside
+            hasSelectedService={Boolean(selectedServiceId)}
+            hasSelectedTime={Boolean(selectedSlot)}
+            isHeld={isHeld || isConfirming}
+          />
+        )}
+      </main>
+
+      <footer className="border-t border-forest-900/10 px-5 py-6 text-center sm:px-8">
+        <a
+          href="#home"
+          className="font-serif text-[15px] tracking-[0.12em] text-forest-900"
+        >
+          SOL <span className="text-brass-600">&</span> STILL
+        </a>
+        <p className="mt-1 text-[9px] uppercase tracking-[0.17em] text-forest-800/45">
+          Thoughtful care, naturally · Accra, Ghana
+        </p>
+      </footer>
+    </div>
   );
 }

@@ -25,8 +25,6 @@ type WorkingHoursRow = {
 type BookingRow = {
   start_time: string;
   end_time: string;
-  status: "held" | "confirmed";
-  held_until?: string | null;
 };
 
 export async function getAvailability(
@@ -72,7 +70,10 @@ export async function getAvailability(
       "get_active_booking_intervals",
       {
         p_therapist_id: therapist.id,
-        p_date: date,
+        p_from: `${date}T00:00:00.000Z`,
+        p_until: new Date(
+          new Date(`${date}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000,
+        ).toISOString(),
       },
     );
 
@@ -83,8 +84,7 @@ export async function getAvailability(
     ).map((booking) => ({
       startTime: booking.start_time,
       endTime: booking.end_time,
-      status: booking.status,
-      heldUntil: booking.held_until,
+      status: "confirmed",
     }));
 
     const starts = getAvailableSlots({

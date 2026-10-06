@@ -72,6 +72,14 @@ describe("getAvailability", () => {
 
     const result = await getAvailability("service-1", "2026-10-05");
 
+    expect(mockSupabase.rpc).toHaveBeenCalledWith(
+      "get_active_booking_intervals",
+      {
+        p_therapist_id: "therapist-1",
+        p_from: "2026-10-05T00:00:00.000Z",
+        p_until: "2026-10-06T00:00:00.000Z",
+      },
+    );
     expect(result).toEqual([
       {
         therapistId: "therapist-1",
