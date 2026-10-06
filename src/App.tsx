@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import {
@@ -42,6 +42,10 @@ export default function App() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
     null,
   );
+  const [bookingPage, setBookingPage] = useState<"treatments" | "availability">(
+    "treatments",
+  );
+  const previousBookingPage = useRef(bookingPage);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -58,33 +62,77 @@ export default function App() {
   const [holdTick, setHoldTick] = useState(0);
 
   useEffect(() => {
-    supabase
-      .from("services")
-      .select("id, name, description, duration_minutes, price")
-      .order("name")
-      .then(({ data, error: queryError }) => {
+    if (previousBookingPage.current === bookingPage) {
+      return;
+    }
+
+    previousBookingPage.current = bookingPage;
+    const targetId =
+      bookingPage === "availability" ? "booking" : "services-heading";
+    document.getElementById(targetId)?.focus();
+    document.body.scrollIntoView?.({ block: "start" });
+  }, [bookingPage]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadServices() {
+      try {
+        const { data, error: queryError } = await supabase
+          .from("services")
+          .select("id, name, description, duration_minutes, price")
+          .order("name");
+
+        if (!isActive) return;
+
         if (queryError) {
           setError("Services could not be loaded. Please try again later.");
         } else {
           setServices(data ?? []);
         }
+      } catch {
+        if (isActive) {
+          setError("Services could not be loaded. Please try again later.");
+        }
+      } finally {
+        if (isActive) setServicesLoading(false);
+      }
+    }
 
-        setServicesLoading(false);
-      });
+    void loadServices();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   useEffect(() => {
     if (!selectedServiceId) {
       setAvailableSlots([]);
+      setAvailabilityLoading(false);
       return;
     }
 
+    let isActive = true;
     setAvailabilityLoading(true);
 
-    getAvailability(selectedServiceId, bookingDate).then((slots) => {
-      setAvailableSlots(slots);
-      setAvailabilityLoading(false);
-    });
+    getAvailability(selectedServiceId, bookingDate)
+      .then((slots) => {
+        if (isActive) setAvailableSlots(slots);
+      })
+      .catch(() => {
+        if (isActive) {
+          setAvailableSlots([]);
+          setError("Appointment times could not be loaded. Please try again.");
+        }
+      })
+      .finally(() => {
+        if (isActive) setAvailabilityLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [selectedServiceId, bookingDate, availabilityRefresh]);
 
   useEffect(() => {
@@ -117,6 +165,7 @@ export default function App() {
       }
 
       setSelectedServiceId(parsed.serviceId);
+      setBookingPage("availability");
 
       dispatch({
         type: "RESTORE_HOLD",
@@ -320,10 +369,13 @@ export default function App() {
   const isConfirming = bookingFlow.status === "confirming";
   const isReconciling = bookingFlow.status === "reconciling";
   const isBookingDetailsVisible = isHeld || isConfirming;
+  const selectedService = services.find(
+    (service) => service.id === selectedServiceId,
+  );
   const activeStep: 1 | 2 | 3 =
     isConfirmed || isBookingDetailsVisible || isReconciling
       ? 3
-      : selectedServiceId
+      : bookingPage === "availability"
         ? 2
         : 1;
 
@@ -343,11 +395,93 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-ivory-100 text-forest-950">
-      <BookingHeader activeStep={activeStep} />
+      <BookingHeader
+        activeStep={activeStep}
+        showHero={bookingPage === "treatments"}
+        onBackToTreatments={() => setBookingPage("treatments")}
+      />
+
+      {bookingPage === "treatments" && (
+        <section
+          id="about"
+          aria-labelledby="about-heading"
+          className="mx-auto grid max-w-7xl gap-8 border-y border-forest-900/10 bg-white/35 px-5 py-8 sm:px-8 sm:py-10 md:grid-cols-[0.85fr_1.15fr] md:items-center md:gap-14"
+        >
+          <div className="relative overflow-hidden rounded-3xl bg-forest-900 px-6 py-5 text-ivory-50 sm:px-8 sm:py-6">
+            <span
+              aria-hidden="true"
+              className="absolute -right-10 -top-12 size-48 rounded-full border border-white/10"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute -right-2 -top-4 size-32 rounded-full border border-white/10"
+            />
+            <p className="relative section-kicker text-brass-200">
+              A sanctuary in Accra
+            </p>
+            <p className="relative mt-4 font-serif text-[28px] leading-[1.08] tracking-[-0.03em] sm:text-[34px]">
+              Come as you are.
+              <br />
+              Leave a little lighter.
+            </p>
+            <p className="relative mt-3 max-w-sm text-xs leading-5 text-ivory-100/70">
+              SOL &amp; STILL is a space to pause, reset, and receive thoughtful
+              care at your own pace.
+            </p>
+
+            <div className="relative mt-4 overflow-hidden rounded-[1.2rem] border border-white/10 shadow-[0_16px_34px_rgba(0,0,0,0.15)]">
+              <img
+                src="https://static.wixstatic.com/media/52b3f5_165fee3db0aa468bbcf6af64cfc754ce~mv2_d_2000_1335_s_2.jpg/v1/fill/w_980,h_307,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/52b3f5_165fee3db0aa468bbcf6af64cfc754ce~mv2_d_2000_1335_s_2.jpg"
+                alt="Customer receiving a massage in a calm spa setting"
+                className="h-40 w-full object-cover sm:h-44"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-forest-950/45 via-transparent to-transparent" />
+            </div>
+          </div>
+          <div className="max-w-xl">
+            <p className="section-kicker">About SOL &amp; STILL</p>
+            <h2
+              id="about-heading"
+              className="mt-3 font-serif text-[30px] font-normal leading-tight tracking-[-0.035em] text-forest-950 sm:text-[38px]"
+            >
+              Wellbeing, with room to breathe.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-forest-800/70">
+              We believe care should feel personal, never hurried. Our
+              considered treatments pair skilled hands with a calm, welcoming
+              setting, giving you space to reconnect with yourself.
+            </p>
+            <div className="mt-6 grid gap-4 border-t border-forest-900/10 pt-5 sm:grid-cols-2">
+              <div>
+                <p className="font-serif text-[17px] text-forest-950">
+                  Thoughtfully tailored
+                </p>
+                <p className="mt-1 text-xs leading-5 text-forest-800/60">
+                  Care shaped around what you need today.
+                </p>
+              </div>
+              <div>
+                <p className="font-serif text-[17px] text-forest-950">
+                  Always unhurried
+                </p>
+                <p className="mt-1 text-xs leading-5 text-forest-800/60">
+                  A welcoming pause, from arrival to goodbye.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <main
         id="booking"
-        className="mx-auto grid max-w-7xl gap-8 px-5 pb-16 pt-2 sm:px-8 sm:pb-24 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14"
+        tabIndex={-1}
+        aria-label={
+          bookingPage === "availability" ? "Choose an appointment time" : undefined
+        }
+        className={`mx-auto grid max-w-7xl gap-8 px-5 pb-16 sm:px-8 sm:pb-24 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-14 ${
+          bookingPage === "treatments" ? "pt-2" : "pt-8 sm:pt-10"
+        }`}
       >
         <div className="min-w-0 space-y-9 sm:space-y-11">
           {error && (
@@ -381,20 +515,67 @@ export default function App() {
             </p>
           )}
 
-          {!isConfirmed && (
+          {!isConfirmed && (bookingPage === "treatments" || selectedServiceId) && (
             <ServicePicker
               services={services}
               selectedServiceId={selectedServiceId}
               isLoading={servicesLoading}
               onSelect={(serviceId) => {
                 setError(null);
+
+                if (bookingPage === "availability" && selectedServiceId === serviceId) {
+                  setSelectedSlot(null);
+                  setBookingPage("treatments");
+                  return;
+                }
+
                 setSelectedServiceId(serviceId);
                 setSelectedSlot(null);
+                setBookingPage("availability");
               }}
             />
           )}
 
-          {!isConfirmed && (
+          {!isConfirmed && bookingPage === "availability" && (
+            <section
+              aria-labelledby="selected-ritual-heading"
+              className="booking-section rounded-[1.2rem] border border-forest-900/10 bg-white/70 p-5 shadow-[0_8px_25px_rgba(42,56,43,0.035)] sm:p-7"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="section-kicker">Your ritual</p>
+                  <h2
+                    id="selected-ritual-heading"
+                    className="mt-1 font-serif text-[25px] leading-tight text-forest-950"
+                  >
+                    {selectedService?.name ?? "Your selected treatment"}
+                  </h2>
+                  <p className="mt-2 text-xs leading-5 text-forest-800/60">
+                    {selectedService?.description}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Change selected ritual"
+                  aria-pressed="true"
+                  onClick={() => setBookingPage("treatments")}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-forest-900/15 px-4 py-2.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-forest-800 transition-colors hover:border-forest-900/40 hover:bg-ivory-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass-600 focus-visible:ring-offset-2"
+                >
+                  <span>{selectedService?.name ?? "Selected ritual"}</span>
+                  <span className="text-forest-800/55">Change</span>
+                  <span aria-hidden="true">↗</span>
+                </button>
+              </div>
+              {selectedService && (
+                <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-forest-900/10 pt-4 text-[10px] font-medium uppercase tracking-widest text-forest-800/60">
+                  <span>{selectedService.duration_minutes} minutes</span>
+                  <span>GHS {Number(selectedService.price).toFixed(2)}</span>
+                </div>
+              )}
+            </section>
+          )}
+
+          {!isConfirmed && bookingPage === "availability" && (
             <AvailabilityPicker
               slots={availableSlots}
               selectedSlot={selectedSlot}
@@ -449,6 +630,67 @@ export default function App() {
           />
         )}
       </main>
+
+      {bookingPage === "treatments" && <section
+        aria-labelledby="testimonials-heading"
+        className="border-y border-forest-900/10 bg-white/35 px-5 py-14 sm:px-8 sm:py-20"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto mb-8 max-w-xl text-center sm:mb-10">
+            <p className="section-kicker">A moment to exhale</p>
+            <h2
+              id="testimonials-heading"
+              className="mt-2 font-serif text-[30px] font-normal tracking-[-0.035em] text-forest-950 sm:text-[38px]"
+            >
+              A softer kind of care.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-forest-800/65">
+              Thoughtful touches make all the difference.
+            </p>
+            <p className="mt-2 text-[10px] uppercase tracking-[0.12em] text-forest-800/45">
+              Sample guest notes
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                quote:
+                  "From the first hello, everything felt calm and considered. I left feeling lighter.",
+                treatment: "A moment of calm",
+              },
+              {
+                quote:
+                  "The massage was exactly what I needed — unhurried, thoughtful, and deeply restorative.",
+                treatment: "Time to unwind",
+              },
+              {
+                quote:
+                  "A beautiful little pause in a busy week. I’m already looking forward to coming back.",
+                treatment: "A welcome reset",
+              },
+            ].map((testimonial) => (
+              <figure
+                key={testimonial.treatment}
+                className="flex min-h-52 flex-col rounded-2xl border border-forest-900/10 bg-ivory-50/80 p-6 shadow-[0_6px_20px_rgba(42,56,43,0.035)] sm:p-7"
+              >
+                <span
+                  aria-hidden="true"
+                  className="font-serif text-3xl leading-none text-brass-500"
+                >
+                  “
+                </span>
+                <blockquote className="mt-3 flex-1 font-serif text-[17px] leading-7 text-forest-950">
+                  {testimonial.quote}
+                </blockquote>
+                <figcaption className="mt-5 border-t border-forest-900/10 pt-4 text-[9px] font-semibold uppercase tracking-[0.15em] text-forest-800/55">
+                  {testimonial.treatment}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>}
 
       <footer className="border-t border-forest-900/10 px-5 py-6 text-center sm:px-8">
         <a

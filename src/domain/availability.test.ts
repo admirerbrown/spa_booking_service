@@ -7,8 +7,34 @@ describe('getAvailableSlots', () => {
   const workingHours = [{ start: '09:00', end: '12:00' }];
 
   it('creates duration-sized slots that fit completely within working hours', () => {
-    expect(getAvailableSlots({ day, workingHours, durationMinutes: 60, bookings: [] }))
+    expect(getAvailableSlots({
+      day,
+      workingHours,
+      durationMinutes: 60,
+      bookings: [],
+      now: new Date('2026-10-01T08:00:00.000Z'),
+    }))
       .toEqual(['09:00', '10:00', '11:00']);
+  });
+
+  it('does not offer slots that have already started today', () => {
+    expect(getAvailableSlots({
+      day,
+      workingHours,
+      durationMinutes: 60,
+      bookings: [],
+      now: new Date('2026-10-01T10:30:00.000Z'),
+    })).toEqual(['11:00']);
+  });
+
+  it('does not offer slots on a day that has already passed', () => {
+    expect(getAvailableSlots({
+      day,
+      workingHours,
+      durationMinutes: 60,
+      bookings: [],
+      now: new Date('2026-10-02T08:00:00.000Z'),
+    })).toEqual([]);
   });
 
   it('removes every slot that overlaps an active confirmed booking', () => {

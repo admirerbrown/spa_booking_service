@@ -87,11 +87,15 @@ export async function getAvailability(
       status: "confirmed",
     }));
 
+    const isCurrentDay = date === new Date().toISOString().slice(0, 10);
+    const now = isCurrentDay ? new Date() : new Date(`${date}T00:00:00.000Z`);
+
     const starts = getAvailableSlots({
       day: date,
       workingHours: therapistHours,
       durationMinutes: (service as ServiceRow).duration_minutes,
       bookings: bookingIntervals,
+      now,
     });
 
     for (const startTime of starts) {

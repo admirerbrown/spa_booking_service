@@ -54,11 +54,13 @@ export function getAvailableSlots({
       slotStart += durationMinutes
     ) {
       const slotEnd = slotStart + durationMinutes;
+      const slotStartAt = new Date(`${day}T${clock(slotStart)}:00.000Z`);
+      if (slotStartAt <= now) continue;
+
       const overlaps = bookings.some((booking) => {
         if (!isActive(booking, now)) return false;
         const bookingStart = new Date(booking.startTime);
         const bookingEnd = new Date(booking.endTime);
-        const slotStartAt = new Date(`${day}T${clock(slotStart)}:00.000Z`);
         const slotEndAt = new Date(`${day}T${clock(slotEnd)}:00.000Z`);
         return bookingStart < slotEndAt && bookingEnd > slotStartAt;
       });

@@ -187,7 +187,9 @@ describe("App booking lifecycle", () => {
 
       expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
 
-      expect(service).toHaveAttribute("aria-pressed", "true");
+      expect(
+        screen.getByRole("button", { name: /deep tissue massage/i }),
+      ).toHaveAttribute("aria-pressed", "true");
     });
 
     it("refreshes availability after a generic hold failure", async () => {
@@ -253,7 +255,9 @@ describe("App booking lifecycle", () => {
 
       expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
 
-      expect(service).toHaveAttribute("aria-pressed", "true");
+      expect(
+        screen.getByRole("button", { name: /deep tissue massage/i }),
+      ).toHaveAttribute("aria-pressed", "true");
     });
   });
 
@@ -1053,6 +1057,40 @@ describe("App booking lifecycle", () => {
 
     expect(
       screen.getByText("Booking reference: booking-default"),
+    ).toBeInTheDocument();
+  });
+
+  it("opens appointment selection as a separate step and lets guests change rituals", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Choose a time" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Wellbeing, with room to breathe.",
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /deep tissue massage/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Choose your ritual" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Wellbeing, with room to breathe.",
+      }),
     ).toBeInTheDocument();
   });
 });

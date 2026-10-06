@@ -177,6 +177,26 @@ describe("App", () => {
       expect(screen.getByRole("button", { name: "10:00" })).toBeInTheDocument();
     });
 
+    it("shows an error instead of leaving availability loading when times fail to load", async () => {
+      getAvailability.mockRejectedValueOnce(new Error("Availability unavailable"));
+
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: /deep tissue massage/i,
+        }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /appointment times could not be loaded/i,
+      );
+      expect(
+        screen.queryByRole("status", { name: /loading availability/i }),
+      ).not.toBeInTheDocument();
+    });
+
     it("selects an available time", async () => {
       const user = userEvent.setup();
 
