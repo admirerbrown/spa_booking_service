@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const { getAvailability, createHold, confirmHold, getBookingStatus, from } =
   vi.hoisted(() => ({
@@ -235,7 +236,9 @@ describe("App", () => {
     });
 
     it("shows an error instead of leaving availability loading when times fail to load", async () => {
-      getAvailability.mockRejectedValueOnce(new Error("Availability unavailable"));
+      getAvailability.mockRejectedValueOnce(
+        new Error("Availability unavailable"),
+      );
 
       const user = userEvent.setup();
       render(<App />);
@@ -300,7 +303,7 @@ describe("App", () => {
       expect(createHold).toHaveBeenCalledWith({
         serviceId: "service-1",
         therapistId: "therapist-1",
-        startTime: "2026-10-06T09:00:00Z",
+        startTime: `${todayISO()}T09:00:00Z`,
       });
     });
 
@@ -382,11 +385,11 @@ describe("App", () => {
 
     render(<App />);
 
-  await userEvent.click(
-    await screen.findByRole("button", {
-      name: /deep tissue massage/i,
-    }),
-  );
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: /deep tissue massage/i,
+      }),
+    );
 
     expect(
       screen.getByRole("status", { name: /loading availability/i }),
@@ -443,10 +446,9 @@ describe("App", () => {
       }),
     ).not.toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: "+233 002 882 4444" })).toHaveAttribute(
-      "href",
-      "tel:+2330028824444",
-    );
+    expect(
+      screen.getByRole("link", { name: "+233 002 882 4444" }),
+    ).toHaveAttribute("href", "tel:+2330028824444");
     expect(
       screen.getByRole("link", { name: "solstill@mail.outlook.com" }),
     ).toHaveAttribute("href", "mailto:solstill@mail.outlook.com");

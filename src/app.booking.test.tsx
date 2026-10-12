@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+const todayISO = () => new Date().toISOString().slice(0, 10);
 import { BookingError } from "./lib/bookingApi";
 
 const {
@@ -12,12 +13,12 @@ const {
   getBookingStatus,
   releaseHold,
 } = vi.hoisted(() => ({
-    getAvailability: vi.fn(),
-    createHold: vi.fn(),
-    confirmHold: vi.fn(),
-    getBookingStatus: vi.fn(),
-    releaseHold: vi.fn(),
-  }));
+  getAvailability: vi.fn(),
+  createHold: vi.fn(),
+  confirmHold: vi.fn(),
+  getBookingStatus: vi.fn(),
+  releaseHold: vi.fn(),
+}));
 
 vi.mock("./lib/supabase", () => ({
   supabase: {
@@ -186,7 +187,7 @@ describe("App booking lifecycle", () => {
       expect(getAvailability).toHaveBeenCalledTimes(2);
       expect(getAvailability).toHaveBeenLastCalledWith(
         "service-1",
-        "2026-10-06",
+        todayISO(),
       );
 
       await waitFor(() => {
@@ -257,7 +258,7 @@ describe("App booking lifecycle", () => {
       expect(getAvailability).toHaveBeenCalledTimes(2);
       expect(getAvailability).toHaveBeenLastCalledWith(
         "service-1",
-        "2026-10-06",
+        todayISO(),
       );
 
       await waitFor(() => {
@@ -330,9 +331,7 @@ describe("App booking lifecycle", () => {
         await screen.findByRole("button", { name: /deep tissue massage/i }),
       );
       await user.click(await screen.findByRole("button", { name: "09:00" }));
-      await user.click(
-        await screen.findByRole("button", { name: "Cancel" }),
-      );
+      await user.click(await screen.findByRole("button", { name: "Cancel" }));
 
       await waitFor(() => {
         expect(releaseHold).toHaveBeenCalledWith({
@@ -436,7 +435,7 @@ describe("App booking lifecycle", () => {
       expect(createHold).toHaveBeenCalledWith({
         serviceId: "service-1",
         therapistId: "therapist-1",
-        startTime: "2026-10-06T09:00:00Z",
+        startTime: `${todayISO()}T09:00:00Z`,
       });
 
       expect(sessionStorage.getItem("spa_booking_active_hold")).toBe(
@@ -447,8 +446,8 @@ describe("App booking lifecycle", () => {
           heldUntil: "2026-10-05T09:05:00.000Z",
           slot: {
             therapistId: "therapist-1",
-            startTime: "2026-10-06T09:00:00Z",
-            endTime: "2026-10-06T10:00:00Z",
+            startTime: `${todayISO()}T09:00:00Z`,
+            endTime: `${todayISO()}T10:00:00Z`,
           },
         }),
       );
