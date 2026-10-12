@@ -1071,7 +1071,7 @@ export default function App() {
               </li>
               <li>
                 <a
-                  href="mailto:solstill@gh.com"
+                  href="mailto:solstill@mail.outlook.com"
                   className="transition-colors hover:text-brass-200"
                 >
                   solstill@mail.outlook.com

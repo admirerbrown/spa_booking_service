@@ -447,10 +447,9 @@ describe("App", () => {
       "href",
       "tel:+2330028824444",
     );
-    expect(screen.getByRole("link", { name: "solstill@gh.com" })).toHaveAttribute(
-      "href",
-      "mailto:solstill@gh.com",
-    );
+    expect(
+      screen.getByRole("link", { name: "solstill@mail.outlook.com" }),
+    ).toHaveAttribute("href", "mailto:solstill@mail.outlook.com");
     expect(screen.getByText("Accra-Tessano, Accra")).toBeInTheDocument();
     expect(
       screen.getByText("Monday–Saturday, 9:00 am–9:00 pm"),
