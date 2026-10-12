@@ -14,7 +14,8 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "test:db:local": "supabase db reset && DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres vitest run --config vitest.db.config.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "./scripts/deploy.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
