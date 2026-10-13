@@ -189,11 +189,28 @@ export default function App() {
       setBookingPage("treatments");
     }
 
+    function handlePopState() {
+      // Browser back/forward after a confirmed booking starts a fresh visit,
+      // so the confirmation card must not follow the guest to other pages.
+      if (bookingFlow.status === "confirmed") {
+        dispatch({ type: "START_NEW_BOOKING" });
+        setSelectedServiceId(null);
+        setSelectedSlot(null);
+        setCustomerName("");
+        setCustomerContact("");
+        setCustomerDetailsErrors({});
+        setError(null);
+        setBookingPage("treatments");
+      }
+
+      restoreRoute();
+    }
+
     if (selectedTreatmentSlug()) {
       restoreRoute();
     }
-    window.addEventListener("popstate", restoreRoute);
-    return () => window.removeEventListener("popstate", restoreRoute);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, [bookingFlow.status, services]);
 
   useEffect(() => {
@@ -564,7 +581,24 @@ export default function App() {
     }
   }
 
+  function startFreshBooking() {
+    dispatch({ type: "START_NEW_BOOKING" });
+    setSelectedServiceId(null);
+    setSelectedSlot(null);
+    setCustomerName("");
+    setCustomerContact("");
+    setCustomerDetailsErrors({});
+    setError(null);
+    window.history.pushState(null, "", appBasePath());
+    setBookingPage("treatments");
+  }
+
   function returnToTreatments() {
+    if (isConfirmed) {
+      startFreshBooking();
+      return;
+    }
+
     window.history.pushState(null, "", appBasePath());
     setBookingPage("treatments");
   }
@@ -654,7 +688,9 @@ export default function App() {
         id="booking"
         tabIndex={-1}
         aria-label={
-          bookingPage === "availability" ? "Choose an appointment time" : undefined
+          bookingPage === "availability"
+            ? "Choose an appointment time"
+            : undefined
         }
         className={`mx-auto grid max-w-7xl gap-8 px-5 pb-16 sm:px-8 sm:pb-24 ${
           isConfirmed
@@ -713,15 +749,13 @@ export default function App() {
                   (candidate) => candidate.id === serviceId,
                 );
                 if (!service) {
-                  setError("That treatment could not be found. Please try again.");
+                  setError(
+                    "That treatment could not be found. Please try again.",
+                  );
                   return;
                 }
 
-                window.history.pushState(
-                  null,
-                  "",
-                  treatmentPath(service.name),
-                );
+                window.history.pushState(null, "", treatmentPath(service.name));
                 setSelectedServiceId(serviceId);
                 setSelectedSlot(null);
                 setBookingPage("availability");
@@ -870,17 +904,7 @@ export default function App() {
                   ?.name
               }
               durationMinutes={selectedService?.duration_minutes}
-              onReturnHome={() => {
-                dispatch({ type: "START_NEW_BOOKING" });
-                setSelectedServiceId(null);
-                setSelectedSlot(null);
-                setCustomerName("");
-                setCustomerContact("");
-                setCustomerDetailsErrors({});
-                setError(null);
-                window.history.pushState(null, "", appBasePath());
-                setBookingPage("treatments");
-              }}
+              onReturnHome={startFreshBooking}
             />
           )}
         </div>
@@ -895,102 +919,106 @@ export default function App() {
         )}
       </main>
 
-      {bookingPage === "treatments" && <section
-        aria-labelledby="testimonials-heading"
-        className="relative overflow-hidden border-y border-forest-900/10 bg-[#f8f5ee] px-5 py-16 sm:px-8 sm:py-22"
-      >
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-32 size-96 rounded-full border border-forest-900/[0.06]"
-        />
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-10 -top-18 size-64 rounded-full border border-forest-900/[0.06]"
-        />
-        <div className="mx-auto max-w-7xl">
-          <div className="relative mx-auto mb-10 max-w-xl text-center sm:mb-12">
-            <p className="inline-flex items-center gap-3 rounded-full border border-brass-500/35 bg-ivory-50/60 px-4 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-forest-800/70">
-              <span aria-hidden="true" className="text-brass-600">✳</span>
-              Cleint testimonials
-              <span aria-hidden="true" className="text-brass-600">✳</span>
-            </p>
-            <h2
-              id="testimonials-heading"
-              className="mt-4 font-serif text-[34px] font-normal leading-tight tracking-[-0.04em] text-forest-950 sm:text-[44px]"
-            >
-              A softer kind of care.
-            </h2>
-            <p className="mt-3 text-[15px] leading-7 text-forest-800/70">
-              Thoughtful touches make all the difference.
-            </p>
-          </div>
+      {bookingPage === "treatments" && (
+        <section
+          aria-labelledby="testimonials-heading"
+          className="relative overflow-hidden border-y border-forest-900/10 bg-[#f8f5ee] px-5 py-16 sm:px-8 sm:py-22"
+        >
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-32 size-96 rounded-full border border-forest-900/[0.06]"
+          />
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-10 -top-18 size-64 rounded-full border border-forest-900/[0.06]"
+          />
+          <div className="mx-auto max-w-7xl">
+            <div className="relative mx-auto mb-10 max-w-xl text-center sm:mb-12">
+              <p className="inline-flex items-center gap-3 rounded-full border border-brass-500/35 bg-ivory-50/60 px-4 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-forest-800/70">
+                <span aria-hidden="true" className="text-brass-600">
+                  ✳
+                </span>
+                Cleint testimonials
+                <span aria-hidden="true" className="text-brass-600">
+                  ✳
+                </span>
+              </p>
+              <h2
+                id="testimonials-heading"
+                className="mt-4 font-serif text-[34px] font-normal leading-tight tracking-[-0.04em] text-forest-950 sm:text-[44px]"
+              >
+                A softer kind of care.
+              </h2>
+              <p className="mt-3 text-[15px] leading-7 text-forest-800/70">
+                Thoughtful touches make all the difference.
+              </p>
+            </div>
 
-          <div
-            aria-label="Guest testimonials"
-            aria-roledescription="carousel"
-            className="relative mx-auto max-w-5xl"
-          >
             <div
-              aria-live="off"
-              className="grid grid-cols-3 gap-3 sm:gap-5"
+              aria-label="Guest testimonials"
+              aria-roledescription="carousel"
+              className="relative mx-auto max-w-5xl"
             >
-              {Array.from({ length: 3 }, (_, cardOffset) => {
-                const testimonialIndex =
-                  (activeTestimonial + cardOffset) % testimonials.length;
-                const testimonial = testimonials[testimonialIndex];
+              <div aria-live="off" className="grid grid-cols-3 gap-3 sm:gap-5">
+                {Array.from({ length: 3 }, (_, cardOffset) => {
+                  const testimonialIndex =
+                    (activeTestimonial + cardOffset) % testimonials.length;
+                  const testimonial = testimonials[testimonialIndex];
 
-                return (
-                  <figure
-                    key={testimonial.treatment}
-                    aria-label={`Guest note ${testimonialIndex + 1} of ${testimonials.length}`}
-                    className="flex min-h-64 min-w-0 flex-col overflow-hidden rounded-b-[1.35rem] border border-forest-900/10 bg-[#f5f0e7] p-3 shadow-[0_8px_24px_rgba(42,56,43,0.045)] transition-all duration-500 hover:-translate-y-1 hover:border-forest-900/25 hover:shadow-[0_20px_48px_rgba(42,56,43,0.11)] sm:min-h-72 sm:p-7"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span
-                        aria-hidden="true"
-                        className="font-serif text-4xl leading-none text-brass-500"
-                      >
-                        “
-                      </span>
-                      <span className="text-[8px] uppercase tracking-[0.1em] text-forest-800/50 sm:text-[9px] sm:tracking-[0.16em]">
-                        Guest note {testimonialIndex + 1} of {testimonials.length}
-                      </span>
-                    </div>
-                    <div
-                      aria-label={`${testimonial.rating} out of 5 stars`}
-                      className="mt-4 flex gap-1 text-brass-600"
+                  return (
+                    <figure
+                      key={testimonial.treatment}
+                      aria-label={`Guest note ${testimonialIndex + 1} of ${testimonials.length}`}
+                      className="flex min-h-64 min-w-0 flex-col overflow-hidden rounded-b-[1.35rem] border border-forest-900/10 bg-[#f5f0e7] p-3 shadow-[0_8px_24px_rgba(42,56,43,0.045)] transition-all duration-500 hover:-translate-y-1 hover:border-forest-900/25 hover:shadow-[0_20px_48px_rgba(42,56,43,0.11)] sm:min-h-72 sm:p-7"
                     >
-                      {Array.from({ length: 5 }, (_, starIndex) => (
+                      <div className="flex items-center justify-between">
                         <span
-                          key={starIndex}
                           aria-hidden="true"
-                          className={
-                            starIndex < testimonial.rating
-                              ? "opacity-100"
-                              : "opacity-30"
-                          }
+                          className="font-serif text-4xl leading-none text-brass-500"
                         >
-                          ★
+                          “
                         </span>
-                      ))}
-                    </div>
-                    <blockquote className="mt-3 flex-1 font-serif text-sm leading-6 text-forest-950 sm:text-[20px] sm:leading-7">
-                      {testimonial.quote}
-                    </blockquote>
-                    <figcaption className="mt-5 flex items-center gap-2 border-t border-forest-900/10 pt-4 text-[8px] font-semibold uppercase tracking-[0.08em] text-forest-800/60 sm:gap-3 sm:text-[9px] sm:tracking-[0.15em]">
-                      <span
-                        aria-hidden="true"
-                        className="h-px w-6 bg-brass-500/70"
-                      />
-                      {testimonial.treatment}
-                    </figcaption>
-                  </figure>
-                );
-              })}
+                        <span className="text-[8px] uppercase tracking-[0.1em] text-forest-800/50 sm:text-[9px] sm:tracking-[0.16em]">
+                          Guest note {testimonialIndex + 1} of{" "}
+                          {testimonials.length}
+                        </span>
+                      </div>
+                      <div
+                        aria-label={`${testimonial.rating} out of 5 stars`}
+                        className="mt-4 flex gap-1 text-brass-600"
+                      >
+                        {Array.from({ length: 5 }, (_, starIndex) => (
+                          <span
+                            key={starIndex}
+                            aria-hidden="true"
+                            className={
+                              starIndex < testimonial.rating
+                                ? "opacity-100"
+                                : "opacity-30"
+                            }
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <blockquote className="mt-3 flex-1 font-serif text-sm leading-6 text-forest-950 sm:text-[20px] sm:leading-7">
+                        {testimonial.quote}
+                      </blockquote>
+                      <figcaption className="mt-5 flex items-center gap-2 border-t border-forest-900/10 pt-4 text-[8px] font-semibold uppercase tracking-[0.08em] text-forest-800/60 sm:gap-3 sm:text-[9px] sm:tracking-[0.15em]">
+                        <span
+                          aria-hidden="true"
+                          className="h-px w-6 bg-brass-500/70"
+                        />
+                        {testimonial.treatment}
+                      </figcaption>
+                    </figure>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      </section>}
+        </section>
+      )}
 
       <footer className="border-t border-white/10 bg-forest-950 px-5 py-10 text-ivory-50 sm:px-8 sm:py-12">
         <div className="mx-auto grid max-w-7xl gap-9 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.7fr_1fr_1fr_1.2fr] lg:gap-10">
@@ -1082,7 +1110,9 @@ export default function App() {
           </address>
         </div>
         <div className="mx-auto mt-9 flex max-w-7xl flex-col gap-3 border-t border-white/10 pt-5 text-[9px] uppercase tracking-[0.16em] text-ivory-100/45 sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} SOL &amp; STILL. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} SOL &amp; STILL. All rights reserved.
+          </p>
           <p>Thoughtful care, naturally</p>
         </div>
       </footer>
